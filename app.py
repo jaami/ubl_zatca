@@ -306,12 +306,32 @@ def upload_file():
             logging.info("About to send invoice as JSON to ubl.keytouse.com")
             payload = [{"requesttype": "setdata", "data": json.dumps(data)}]  # Prepare payload with JSON contents
             try:
-                response = requests.post("https://ubl.keytouse.com/zatca", json=payload)
-                response.raise_for_status()
+                # Retry once on transient connection errors
+                for attempt in range(2):
+                    try:
+                        response = requests.post(
+                            "https://ubl.keytouse.com/zatca",
+                            json=payload,
+                            timeout=30,
+                        )
+                        response.raise_for_status()
+                        break
+                    except requests.exceptions.RequestException as e:
+                        if attempt == 0:
+                            logging.warning(f"LOC#16: Remote call failed (attempt 1): {e}. Retrying...")
+                            time.sleep(2)
+                        else:
+                            raise
 
-                # get the xml invoice from response and pass it to XmlCheckWithoutX10
-                # Extract the XML invoice from the response
-                xml_invoice = response.json().get('message')
+                resp_data = response.json()
+
+                # Check remote's own status, not just HTTP
+                if resp_data.get("status") != "200":
+                    err = resp_data.get("message", "Unknown remote error")
+                    logging.error(f"LOC#17: Remote rejected invoice: {err}")
+                    return jsonify({"error": f"Remote error: {err}"}), 400
+
+                xml_invoice = resp_data.get("message")
 
                 # Now response received, start Local validation
                 if xml_invoice:
@@ -333,7 +353,7 @@ def upload_file():
 
 
             except requests.exceptions.RequestException as e:
-                err_msg = {f"LOC#11: Remote JSON send error {str(e)}"}
+                err_msg = {"error": f"LOC#11: Remote JSON send error {str(e)}"}
                 logging.error(err_msg)
                 return jsonify(err_msg), 500
 
