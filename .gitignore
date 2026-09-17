@@ -1,0 +1,16 @@
+*.working-*
+*.ok.0
+*.ok.1
+*.ok.2
+a.tmp
+docker
+*.save
+__pycache__/
+*.pyc
+invoice.xml
+app.log
+stderr.log
+*.log
+.env
+*.env.local
+*.[0-9]*

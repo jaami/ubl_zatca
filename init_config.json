@@ -1,0 +1,69 @@
+{
+    "company": {
+        "name": "SA AI co.",
+        "has_developer": false,
+        "developer_contact": {
+            "phone": null,
+            "email": null
+        },
+        "invoice_data_format": "json",
+        "responsibility_level": ["full", "partial", "none"],
+        "accounting_solution": {
+            "type": "MS Dynamics ERP",
+            "excel_file_storage": ""
+        }
+    },
+    "urls": {
+        "database": "",
+        "zatca": "",
+        "ktu_local_server": "localhost",
+        "ktu_remote_server": "ubl.keytouse.com"
+    },
+    "invoice_storage": {
+        "final_invoices_path": "",
+        "previous_invoice_hash": null,
+        "next_icv": null
+    },
+    "security": {
+        "csid": "",
+        "public_key": "",
+        "private_key": ""
+    },
+    "local_database": {
+        "db_host": "",
+        "db_user": "",
+        "db_password": "",
+        "db_name": ""
+    },
+    "remote_database": {
+        "db_host": "",
+        "db_user": "",
+        "db_password": "",
+        "db_name": ""
+    },
+    "ktu_database": {
+        "db_host": "",
+        "db_user": "",
+        "db_password": "",
+        "db_name": ""
+    },
+    "logging": {
+        "log_level": "info",
+        "log_file": "/var/log/e-invoice.log"
+    },
+    "system_status": {
+        "current_status": "active",
+        "ceased_date": null,
+        "critical_situation": false,
+        "status_message": "",
+        "requested_action_needed": false,
+        "active_date_production": "<YYYY-MM-DD>",
+        "final_testing_start_date": "<YYYY-MM-DD>",
+        "final_testing_end_date": "<YYYY-MM-DD>",
+        "number_of_critical_interruptions": 0,
+        "response_time_indication": {
+            "quick_response_required_count": 0,
+            "neglected_response_count": 0
+        }
+    }
+}

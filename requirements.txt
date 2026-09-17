@@ -1,0 +1,7 @@
+Flask==2.0.1
+Werkzeug==2.0.1
+requests==2.26.0
+lxml==4.6.3
+cryptography==3.4.7
+reportlab==3.5.68
+mysql-connector-python

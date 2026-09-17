@@ -1,0 +1,188 @@
+{
+  "StandardInvoice": [
+    {
+      "Invoice": [
+        "ID",
+        "ProfileID",
+        "UUID",
+        "IssueDate",
+        "IssueTime",
+        "InvoiceTypeCode",
+        "Note",
+        "DocumentCurrencyCode",
+        "TaxCurrencyCode",
+        "CreatedAt"
+      ],
+      "AdditionalDocumentReference": [
+        "InvoiceID",
+        "ID",
+        "UUID",
+        "EmbeddedDocumentBinaryObject"
+      ],
+      "Signature": [
+        "InvoiceID",
+        "ID",
+        "SignatureMethod"
+      ],
+      "AccountingParty": [
+        "InvoiceID",
+        "ID",
+        "PartyIdentification",
+        "SchemeID",
+        "PartyType",
+        "RegistrationName"
+      ],
+      "AccountingPartyAddress": [
+        "AccountingPartyID",
+        "ID",
+        "InvoiceID",
+        "StreetName",
+        "BuildingNumber",
+        "CitySubdivisionName",
+        "CityName",
+        "PostalZone",
+        "CountryID"
+      ],
+      "AccountingPartyTaxScheme": [
+        "AccountingPartyID",
+        "ID",
+        "InvoiceID",
+        "CompanyID",
+        "TaxSchemeCode"
+      ],
+      "Delivery": [
+        "InvoiceID",
+        "AccountingPartyID",
+        "ActualDeliveryDate"
+      ],
+      "PaymentMeans": [
+        "InvoiceID",
+        "AccountingPartyID",
+        "PaymentMeansCode"
+      ],
+      "AllowanceCharge": [
+        "InvoiceID",
+        "ID",
+        "ChargeIndicator",
+        "AllowanceChargeReason",
+        "Amount",
+        "CurrencyID"
+      ],
+      "AllowanceTaxCategory": [
+        "AllowanceChargeID",
+        "ID",
+        "InvoiceID",
+        "SchemeID",
+        "SchemeAgencyID",
+        "Percent",
+        "TaxCategoryCode"
+      ],
+      "AllowanceTaxCategoryScheme": [
+        "AllowanceTaxCategoryID",
+        "ID",
+        "InvoiceID",
+        "SchemeID",
+        "SchemeAgencyID",
+        "TaxSchemeCode"
+      ],
+      "TaxTotal": [
+        "InvoiceID",
+        "ID",
+        "TaxAmount",
+        "CurrencyID"
+      ],
+      "TaxSubTotal": [
+        "TaxTotalID",
+        "ID",
+        "InvoiceID",
+        "TaxableAmount",
+        "TaxAmount",
+        "CurrencyID"
+      ],
+      "TaxSubCategory": [
+        "TaxSubTotalID",
+        "ID",
+        "InvoiceID",
+        "TaxCategoryCode",
+        "SchemeID",
+        "SchemeAgencyID",
+        "Percent"
+      ],
+      "TaxSubCategoryScheme": [
+        "TaxSubCategoryID",
+        "ID",
+        "InvoiceID",
+        "TaxSchemeCode",
+        "SchemeID",
+        "SchemeAgencyID"
+      ],
+      "LegalMonetaryTotal": [
+        "InvoiceID",
+        "LineExtensionAmount",
+        "LineExtensionCurrencyID",
+        "TaxExclusiveAmount",
+        "TaxExclusiveCurrencyID",
+        "TaxInclusiveAmount",
+        "TaxInclusiveCurrencyID",
+        "AllowanceTotalAmount",
+        "AllowanceCurrencyID",
+        "PrepaidAmount",
+        "PrepaidCurrencyID",
+        "PayableAmount",
+        "PayableCurrencyID"
+      ],
+      "InvoiceLine": [
+        "InvoiceID",
+        "ID",
+        "InvoicedQuantity",
+        "UnitCode",
+        "LineExtensionAmount",
+        "LineExtensionCurrencyID"
+      ],
+      "InvoiceLineTaxTotal": [
+        "LineID",
+        "ID",
+        "InvoiceID",
+        "TaxAmount",
+        "TaxAmountCurrencyID",
+        "RoundingAmount",
+        "RoundingAmountCurrencyID"
+      ],
+      "InvoiceLineItem": [
+        "LineID",
+        "ID",
+        "InvoiceID",
+        "Name"
+      ],
+      "InvoiceLineTaxCategory": [
+        "InvoiceLineItemID",
+        "ID",
+        "InvoiceID",
+        "Percent",
+        "TaxCategoryCode"
+      ],
+      "InvoiceLineTaxScheme": [
+        "InvoiceLineTaxCategoryID",
+        "ID",
+        "InvoiceID",
+        "TaxSchemeCode"
+      ],
+      "InvoiceLinePrice": [
+        "LineID",
+        "ID",
+        "InvoiceID",
+        "PriceAmount",
+        "PriceAmountCurrencyID"
+      ],
+      "InvoiceLineAllowanceCharge": [
+        "InvoiceLinePriceID",
+        "ID",
+        "InvoiceID",
+        "ChargeIndicator",
+        "AllowanceChargeReason",
+        "Amount",
+        "CurrencyID"
+      ]
+    }
+  ]
+}

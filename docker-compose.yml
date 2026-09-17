@@ -1,0 +1,40 @@
+services:
+  flask-app:
+    image: keytouse/ubl_zatca:ktuzatca-flask-app-beta-1.0
+    container_name: ktuzatca-flask-app
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./envVars.env
+    volumes:
+      # Mount local code so edits take effect without rebuilding the image
+      - ./app.py:/app/app.py:ro
+      - ./InsertIntoDB.py:/app/InsertIntoDB.py:ro
+      - ./DeleteInvoice.py:/app/DeleteInvoice.py:ro
+      - ./xmlToSDK.py:/app/xmlToSDK.py:ro
+      - ./required_invoice_elements.json:/app/required_invoice_elements.json:ro
+      - ./init_config.json:/app/init_config.json:ro
+      - ./upload.html:/app/upload.html:ro
+    networks:
+      - my_network
+    depends_on:
+      - mysql
+
+  mysql:
+    image: keytouse/ubl_zatca:mysql-8.0.39
+    container_name: ktuzatca-mysql-1
+    environment:
+      MYSQL_ROOT_PASSWORD: TheRoot@Pass
+      MYSQL_DATABASE: keytouse_zatca
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
+
+volumes:
+  mysql_data: {}
