@@ -158,6 +158,12 @@
       "ID": "TT1",
       "TaxAmount": 0.6,
       "CurrencyID": "SAR"
+    },
+    {
+      "InvoiceID": "INV001",
+      "ID": "TT2",
+      "TaxAmount": 0.6,
+      "CurrencyID": "SAR"
     }
   ],
   "TaxSubTotal": [
