@@ -1,92 +1,283 @@
-[
-  {
-    "requesttype": "setdata",
-    "data": {
-      "Invoice": [
-        {
-          "ID": "INV001",
-          "ProfileID": "reporting:1.0",
-          "UUID": "8e6f8f2b-6e6a-4a4a-9c1c-1234567890ab",
-          "IssueDate": "2025-09-15",
-          "IssueTime": "14:30:00",
-          "InvoiceTypeCode": "388",
-          "Note": "Sample invoice note",
-          "DocumentCurrencyCode": "SAR",
-          "TaxCurrencyCode": "SAR",
-          "CreatedAt": "2025-09-15T14:30:00Z"
-        }
-      ],
-      "AdditionalDocumentReference": [
-        { "InvoiceID": "INV001", "ID": "ICV", "UUID": null, "EmbeddedDocumentBinaryObject": null },
-        { "InvoiceID": "INV001", "ID": "PIH", "UUID": "1", "EmbeddedDocumentBinaryObject": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==" },
-        { "InvoiceID": "INV001", "ID": "QR", "UUID": "1", "EmbeddedDocumentBinaryObject": "AW/YtNix2YPYqSDYqtmI2LHZitivINin2YTYqtmD2YbZiNmE2YjYrNmK2Kcg2KjYo9mC2LXZiSDYs9ix2LnYqSDYp9mE2YXYrdiv2YjYr9ip" }
-      ],
-      "Signature": [
-        { "InvoiceID": "INV001", "ID": "urn:oasis:names:specification:ubl:signature:Invoice", "SignatureMethod": "urn:oasis:names:specification:ubl:dsig:enveloped:xades" }
-      ],
-      "AccountingParty": [
-        { "InvoiceID": "INV001", "ID": "CUST001", "PartyIdentification": "6534565243524", "SchemeID": "IQA", "PartyType": "CUSTOMER", "RegistrationName": "Customer Name" },
-        { "InvoiceID": "INV001", "ID": "SUPP001", "PartyIdentification": "1010010000", "SchemeID": "CRN", "PartyType": "SUPPLIER", "RegistrationName": "Supplier Company Name" }
-      ],
-      "AccountingPartyAddress": [
-        { "AccountingPartyID": "CUST001", "ID": "CustomerAddress1", "InvoiceID": "INV001", "StreetName": "Choburji Chowk", "BuildingNumber": "5472", "CitySubdivisionName": "Ichra more", "CityName": "Lahore", "PostalZone": "54788", "CountryID": "SA" },
-        { "AccountingPartyID": "SUPP001", "ID": "SupplierAddress1", "InvoiceID": "INV001", "StreetName": "123 Supplier St", "BuildingNumber": "5847", "CitySubdivisionName": "Downtown", "CityName": "Riyadh", "PostalZone": "12415", "CountryID": "SA" }
-      ],
-      "AccountingPartyTaxScheme": [
-        { "AccountingPartyID": "CUST001", "ID": "CustomerTaxScheme1", "InvoiceID": "INV001", "CompanyID": "300000000000003", "TaxSchemeCode": "VAT" },
-        { "AccountingPartyID": "SUPP001", "ID": "SupplierTaxScheme1", "InvoiceID": "INV001", "CompanyID": "300000000000004", "TaxSchemeCode": "VAT" }
-      ],
-      "Delivery": [
-        { "InvoiceID": "INV001", "AccountingPartyID": "CUST001", "ActualDeliveryDate": "2025-09-15" }
-      ],
-      "PaymentMeans": [
-        { "InvoiceID": "INV001", "AccountingPartyID": "SUPP001", "PaymentMeansCode": "30" }
-      ],
-      "AllowanceCharge": [
-        { "InvoiceID": "INV001", "ID": "1", "ChargeIndicator": "false", "AllowanceChargeReason": "discount", "Amount": 0.0, "CurrencyID": "SAR" }
-      ],
-      "AllowanceTaxCategory": [
-        { "AllowanceChargeID": "1", "ID": "ATC1", "InvoiceID": "INV001", "SchemeID": "UN/ECE 5305", "SchemeAgencyID": "6", "Percent": 15.0, "TaxCategoryCode": "S" }
-      ],
-      "AllowanceTaxCategoryScheme": [
-        { "AllowanceTaxCategoryID": "ATC1", "ID": "ATCS1", "InvoiceID": "INV001", "SchemeID": "UN/ECE 5153", "SchemeAgencyID": "6", "TaxSchemeCode": "VAT" }
-      ],
-      "TaxTotal": [
-        { "InvoiceID": "INV001", "ID": "TT1", "TaxAmount": 0.6, "CurrencyID": "SAR" }
-      ],
-      "TaxSubTotal": [
-        { "TaxTotalID": "TT1", "ID": "TST1", "InvoiceID": "INV001", "TaxableAmount": 4.0, "TaxAmount": 0.6, "CurrencyID": "SAR" }
-      ],
-      "TaxSubCategory": [
-        { "TaxSubTotalID": "TST1", "ID": "TSC1", "InvoiceID": "INV001", "TaxCategoryCode": "S", "SchemeID": "UN/ECE 5305", "SchemeAgencyID": "6", "Percent": 15.0 }
-      ],
-      "TaxSubCategoryScheme": [
-        { "TaxSubCategoryID": "TSC1", "ID": "TSCS1", "InvoiceID": "INV001", "TaxSchemeCode": "VAT", "SchemeID": "UN/ECE 5153", "SchemeAgencyID": "6" }
-      ],
-      "LegalMonetaryTotal": [
-        { "InvoiceID": "INV001", "LineExtensionAmount": 4.0, "LineExtensionCurrencyID": "SAR", "TaxExclusiveAmount": 4.0, "TaxExclusiveCurrencyID": "SAR", "TaxInclusiveAmount": 4.6, "TaxInclusiveCurrencyID": "SAR", "AllowanceTotalAmount": 0.0, "AllowanceCurrencyID": "SAR", "PrepaidAmount": 0.0, "PrepaidCurrencyID": "SAR", "PayableAmount": 4.6, "PayableCurrencyID": "SAR" }
-      ],
-      "InvoiceLine": [
-        { "InvoiceID": "INV001", "ID": "L1", "InvoicedQuantity": 2.0, "UnitCode": "PCE", "LineExtensionAmount": 4.0, "LineExtensionCurrencyID": "SAR" }
-      ],
-      "InvoiceLineTaxTotal": [
-        { "LineID": "L1", "ID": "ILTT1", "InvoiceID": "INV001", "TaxAmount": 0.6, "TaxAmountCurrencyID": "SAR", "RoundingAmount": 4.6, "RoundingAmountCurrencyID": "SAR" }
-      ],
-      "InvoiceLineItem": [
-        { "LineID": "L1", "ID": "LI1", "InvoiceID": "INV001", "Name": "Apple Juice 100% organic" }
-      ],
-      "InvoiceLineTaxCategory": [
-        { "InvoiceLineItemID": "LI1", "ID": "ILTC1", "InvoiceID": "INV001", "Percent": 15.0, "TaxCategoryCode": "S" }
-      ],
-      "InvoiceLineTaxScheme": [
-        { "InvoiceLineTaxCategoryID": "ILTC1", "ID": "ILTS1", "InvoiceID": "INV001", "TaxSchemeCode": "VAT" }
-      ],
-      "InvoiceLinePrice": [
-        { "LineID": "L1", "ID": "LP1", "InvoiceID": "INV001", "PriceAmount": 2.0, "PriceAmountCurrencyID": "SAR" }
-      ],
-      "InvoiceLineAllowanceCharge": [
-        { "InvoiceLinePriceID": "LP1", "ID": "LAC1", "InvoiceID": "INV001", "ChargeIndicator": "true", "AllowanceChargeReason": "Straight Discount", "Amount": 0.0, "CurrencyID": "SAR" }
-      ]
+{
+  "Config": [
+    {
+      "InvoiceType": "StandardInvoice",
+      "CreatedBy": "192.168.1.10",
+      "CreatedOn": "",
+      "CreatedAt": "",
+      "Status": "NEW"
     }
-  }
-]
+  ],
+  "Invoice": [
+    {
+      "ID": "INV001",
+      "ProfileID": "reporting:1.0",
+      "UUID": "8e6f8f2b-6e6a-4a4a-9c1c-1234567890ab",
+      "IssueDate": "2025-09-15",
+      "IssueTime": "14:30:00",
+      "InvoiceTypeCode": "388",
+      "Note": "Sample invoice note",
+      "DocumentCurrencyCode": "SAR",
+      "TaxCurrencyCode": "SAR",
+      "CreatedAt": "2025-09-15T14:30:00Z"
+    }
+  ],
+  "AdditionalDocumentReference": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "ICV",
+      "UUID": "1",
+      "EmbeddedDocumentBinaryObject": null
+    },
+    {
+      "InvoiceID": "INV001",
+      "ID": "PIH",
+      "UUID": null,
+      "EmbeddedDocumentBinaryObject": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ=="
+    },
+    {
+      "InvoiceID": "INV001",
+      "ID": "QR",
+      "UUID": null,
+      "EmbeddedDocumentBinaryObject": "AW/YtNix2YPYqSDYqtmI2LHZitivINin2YTYqtmD2YbZiNmE2YjYrNmK2Kcg2KjYo9mC2LXZiSDYs9ix2LnYqSDYp9mE2YXYrdiv2YjYr9ip"
+    }
+  ],
+  "Signature": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "urn:oasis:names:specification:ubl:signature:Invoice",
+      "SignatureMethod": "urn:oasis:names:specification:ubl:dsig:enveloped:xades"
+    }
+  ],
+  "AccountingParty": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "CUST001",
+      "PartyIdentification": "6534565243524",
+      "SchemeID": "IQA",
+      "PartyType": "CUSTOMER",
+      "RegistrationName": "Customer Name"
+    },
+    {
+      "InvoiceID": "INV001",
+      "ID": "SUPP001",
+      "PartyIdentification": "1010010000",
+      "SchemeID": "CRN",
+      "PartyType": "SUPPLIER",
+      "RegistrationName": "Supplier Company Name"
+    }
+  ],
+  "AccountingPartyAddress": [
+    {
+      "AccountingPartyID": "CUST001",
+      "ID": "CustomerAddress1",
+      "InvoiceID": "INV001",
+      "StreetName": "Choburji Chowk",
+      "BuildingNumber": "5472",
+      "CitySubdivisionName": "Ichra more",
+      "CityName": "Lahore",
+      "PostalZone": "54788",
+      "CountryID": "SA"
+    },
+    {
+      "AccountingPartyID": "SUPP001",
+      "ID": "SupplierAddress1",
+      "InvoiceID": "INV001",
+      "StreetName": "123 Supplier St",
+      "BuildingNumber": "5847",
+      "CitySubdivisionName": "Downtown",
+      "CityName": "Riyadh",
+      "PostalZone": "12415",
+      "CountryID": "SA"
+    }
+  ],
+  "AccountingPartyTaxScheme": [
+    {
+      "AccountingPartyID": "CUST001",
+      "ID": "CustomerTaxScheme1",
+      "InvoiceID": "INV001",
+      "CompanyID": "300000000000003",
+      "TaxSchemeCode": "VAT"
+    },
+    {
+      "AccountingPartyID": "SUPP001",
+      "ID": "SupplierTaxScheme1",
+      "InvoiceID": "INV001",
+      "CompanyID": "311111111111113",
+      "TaxSchemeCode": "VAT"
+    }
+  ],
+  "Delivery": [
+    {
+      "InvoiceID": "INV001",
+      "AccountingPartyID": "CUST001",
+      "ActualDeliveryDate": "2025-09-15"
+    }
+  ],
+  "PaymentMeans": [
+    {
+      "InvoiceID": "INV001",
+      "AccountingPartyID": "CUST001",
+      "PaymentMeansCode": "30"
+    }
+  ],
+  "AllowanceCharge": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "1",
+      "ChargeIndicator": "false",
+      "AllowanceChargeReason": "discount",
+      "Amount": 0.0,
+      "CurrencyID": "SAR"
+    }
+  ],
+  "AllowanceTaxCategory": [
+    {
+      "AllowanceChargeID": "1",
+      "ID": "ATC1",
+      "InvoiceID": "INV001",
+      "SchemeID": "UN/ECE 5305",
+      "SchemeAgencyID": "6",
+      "Percent": 15.0,
+      "TaxCategoryCode": "S"
+    }
+  ],
+  "AllowanceTaxCategoryScheme": [
+    {
+      "AllowanceTaxCategoryID": "ATC1",
+      "ID": "ATCS1",
+      "InvoiceID": "INV001",
+      "SchemeID": "UN/ECE 5153",
+      "SchemeAgencyID": "6",
+      "TaxSchemeCode": "VAT"
+    }
+  ],
+  "TaxTotal": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "TT1",
+      "TaxAmount": 0.6,
+      "CurrencyID": "SAR"
+    },
+    {
+      "InvoiceID": "INV001",
+      "ID": "TT2",
+      "TaxAmount": 0.6,
+      "CurrencyID": "SAR"
+    }
+  ],
+  "TaxSubTotal": [
+    {
+      "TaxTotalID": "TT1",
+      "ID": "TST1",
+      "InvoiceID": "INV001",
+      "TaxableAmount": 4.0,
+      "TaxAmount": 0.6,
+      "CurrencyID": "SAR"
+    }
+  ],
+  "TaxSubCategory": [
+    {
+      "TaxSubTotalID": "TST1",
+      "ID": "TSC1",
+      "InvoiceID": "INV001",
+      "TaxCategoryCode": "S",
+      "SchemeID": "UN/ECE 5305",
+      "SchemeAgencyID": "6",
+      "Percent": 15.0
+    }
+  ],
+  "TaxSubCategoryScheme": [
+    {
+      "TaxSubCategoryID": "TSC1",
+      "ID": "TSCS1",
+      "InvoiceID": "INV001",
+      "TaxSchemeCode": "VAT",
+      "SchemeID": "UN/ECE 5153",
+      "SchemeAgencyID": "6"
+    }
+  ],
+  "LegalMonetaryTotal": [
+    {
+      "InvoiceID": "INV001",
+      "LineExtensionAmount": 4.0,
+      "LineExtensionCurrencyID": "SAR",
+      "TaxExclusiveAmount": 4.0,
+      "TaxExclusiveCurrencyID": "SAR",
+      "TaxInclusiveAmount": 4.6,
+      "TaxInclusiveCurrencyID": "SAR",
+      "AllowanceTotalAmount": 0.0,
+      "AllowanceCurrencyID": "SAR",
+      "PrepaidAmount": 0.0,
+      "PrepaidCurrencyID": "SAR",
+      "PayableAmount": 4.6,
+      "PayableCurrencyID": "SAR"
+    }
+  ],
+  "InvoiceLine": [
+    {
+      "InvoiceID": "INV001",
+      "ID": "L1",
+      "InvoicedQuantity": 2.0,
+      "UnitCode": "PCE",
+      "LineExtensionAmount": 4.0,
+      "LineExtensionCurrencyID": "SAR"
+    }
+  ],
+  "InvoiceLineTaxTotal": [
+    {
+      "LineID": "L1",
+      "ID": "ILTT1",
+      "InvoiceID": "INV001",
+      "TaxAmount": 0.6,
+      "TaxAmountCurrencyID": "SAR",
+      "RoundingAmount": 4.6,
+      "RoundingAmountCurrencyID": "SAR"
+    }
+  ],
+  "InvoiceLineItem": [
+    {
+      "LineID": "L1",
+      "ID": "LI1",
+      "InvoiceID": "INV001",
+      "Name": "Apple Juice 100% organic"
+    }
+  ],
+  "InvoiceLineTaxCategory": [
+    {
+      "InvoiceLineItemID": "LI1",
+      "ID": "ILTC1",
+      "InvoiceID": "INV001",
+      "Percent": 15.0,
+      "TaxCategoryCode": "S"
+    }
+  ],
+  "InvoiceLineTaxScheme": [
+    {
+      "InvoiceLineTaxCategoryID": "ILTC1",
+      "ID": "ILTS1",
+      "InvoiceID": "INV001",
+      "TaxSchemeCode": "VAT"
+    }
+  ],
+  "InvoiceLinePrice": [
+    {
+      "LineID": "L1",
+      "ID": "LP1",
+      "InvoiceID": "INV001",
+      "PriceAmount": 2.0,
+      "PriceAmountCurrencyID": "SAR"
+    }
+  ],
+  "InvoiceLineAllowanceCharge": [
+    {
+      "InvoiceLinePriceID": "LP1",
+      "ID": "LAC1",
+      "InvoiceID": "INV001",
+      "ChargeIndicator": "true",
+      "AllowanceChargeReason": "Straight Discount",
+      "Amount": 0.0,
+      "CurrencyID": "SAR"
+    }
+  ]
+}
