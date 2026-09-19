@@ -1136,3 +1136,30 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `SubmissionLog`
+-- Records every submission attempt to a ZATCA gateway
+--
+
+CREATE TABLE `SubmissionLog` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `InvoiceID` varchar(50) NOT NULL,
+  `InvoiceUUID` varchar(50) DEFAULT NULL,
+  `InvoiceHash` varchar(255) DEFAULT NULL,
+  `Environment` varchar(20) NOT NULL DEFAULT 'sandbox',
+  `Endpoint` varchar(120) DEFAULT NULL,
+  `HTTPStatus` int DEFAULT NULL,
+  `ZATCAStatus` varchar(20) DEFAULT NULL,
+  `ClearanceStatus` varchar(20) DEFAULT NULL,
+  `ReportingStatus` varchar(20) DEFAULT NULL,
+  `RequestJSON` longtext,
+  `ResponseJSON` longtext,
+  `ErrorSummary` text,
+  `SubmittedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  KEY `idx_invoice_id` (`InvoiceID`),
+  KEY `idx_uuid` (`InvoiceUUID`),
+  KEY `idx_submitted_at` (`SubmittedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
