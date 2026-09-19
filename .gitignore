@@ -14,3 +14,6 @@ stderr.log
 .env
 *.env.local
 *.[0-9]*
+
+# Credentials — private keys, CSID secrets, certs
+credentials/
