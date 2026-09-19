@@ -15,6 +15,9 @@ services:
       - ./required_invoice_elements.json:/app/required_invoice_elements.json:ro
       - ./init_config.json:/app/init_config.json:ro
       - ./upload.html:/app/upload.html:ro
+      - ./credentials:/app/credentials
+      - ./credentials/cert.pem:/app/ZatcaSDK/Data/Certificates/cert.pem
+      - ./credentials/private-key.pem:/app/ZatcaSDK/Data/Certificates/ec-secp256k1-priv-key.pem
     networks:
       - my_network
     depends_on:
