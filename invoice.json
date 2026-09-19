@@ -103,7 +103,7 @@
       "AccountingPartyID": "SUPP001",
       "ID": "SupplierTaxScheme1",
       "InvoiceID": "INV001",
-      "CompanyID": "311111111111113",
+      "CompanyID": "399999999900003",
       "TaxSchemeCode": "VAT"
     }
   ],
@@ -268,7 +268,7 @@
       "InvoiceLinePriceID": "LP1",
       "ID": "LAC1",
       "InvoiceID": "INV001",
-      "ChargeIndicator": "true",
+      "ChargeIndicator": "false",
       "AllowanceChargeReason": "Straight Discount",
       "Amount": 0.0,
       "CurrencyID": "SAR"
