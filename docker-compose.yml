@@ -12,6 +12,7 @@ services:
       - ./InsertIntoDB.py:/app/InsertIntoDB.py:ro
       - ./DeleteInvoice.py:/app/DeleteInvoice.py:ro
       - ./xmlToSDK.py:/app/xmlToSDK.py:ro
+      - ./zatca_client.py:/app/zatca_client.py:ro
       - ./required_invoice_elements.json:/app/required_invoice_elements.json:ro
       - ./init_config.json:/app/init_config.json:ro
       - ./upload.html:/app/upload.html:ro

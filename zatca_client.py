@@ -54,15 +54,26 @@ def get_timeout():
     return int(os.environ.get("ZATCA_TIMEOUT", DEFAULT_TIMEOUT))
 
 
-def endpoint_for(env, invoice_type_code):
-    """Return the submission URL for the environment + invoice type."""
+def endpoint_for(env, invoice_type_code, cert_type="compliance"):
+    """
+    Return the submission URL for the environment + invoice type + cert type.
+
+    cert_type:
+      "compliance" -> /compliance/invoices       (Compliance CSID)
+      "production" -> /invoices/clearance/single (Standard, Production CSID)
+                   -> /invoices/reporting/single (Simplified, Production CSID)
+    """
     base = ENDPOINTS[env]
+
+    if cert_type == "compliance":
+        return f"{base}/compliance/invoices"
+
+    # Production endpoints
     code = str(invoice_type_code).strip()
-    if code == "388":  # Standard tax invoice -> clearance (real-time)
+    if code == "388":  # Standard -> clearance
         return f"{base}/invoices/clearance/single"
-    if code == "389":  # Simplified tax invoice -> reporting (24h window)
+    if code == "389":  # Simplified -> reporting
         return f"{base}/invoices/reporting/single"
-    # Default to clearance if unknown; ZATCA will reject if wrong
     return f"{base}/invoices/clearance/single"
 
 
@@ -157,7 +168,7 @@ def build_request(signed_path, request_path):
 # HTTP submission
 # ----------------------------------------------------------------------
 
-def submit(invoice_type_code, body, env=None):
+def submit(invoice_type_code, body, env=None, cert_type="compliance"):
     """POST the request body to the ZATCA gateway."""
     if requests is None:
         return {"ok": False, "error": "requests library not installed"}
@@ -170,7 +181,7 @@ def submit(invoice_type_code, body, env=None):
     except Exception as e:
         return {"ok": False, "error": f"CSID load failed: {e}"}
 
-    url = endpoint_for(env, invoice_type_code)
+    url = endpoint_for(env, invoice_type_code, cert_type=cert_type)
     auth = base64.b64encode(f"{token}:{secret}".encode("utf-8")).decode("ascii")
 
     headers = {
@@ -197,20 +208,15 @@ def submit(invoice_type_code, body, env=None):
         "http_status": resp.status_code,
         "response": resp_json,
     }
-
-
 # ----------------------------------------------------------------------
 # Full pipeline
 # ----------------------------------------------------------------------
 
 def submit_invoice(invoice_xml_path, invoice_type_code,
-                   signed_path=None, request_path=None, env=None):
+                   signed_path=None, request_path=None, env=None,
+                   cert_type="compliance"):
     """
     Sign, build request, submit. One call does it all.
-
-    Returns a dict. On success: {ok, signed_path, request_path, body,
-    url, env, http_status, response}. On failure: {ok: False, stage,
-    error, ...}.
     """
     if signed_path is None:
         signed_path = invoice_xml_path.rsplit(".", 1)[0] + "_signed.xml"
@@ -233,7 +239,8 @@ def submit_invoice(invoice_xml_path, invoice_type_code,
         }
 
     # 3. Submit
-    submit_result = submit(invoice_type_code, build_result["body"], env=env)
+    submit_result = submit(invoice_type_code, build_result["body"],
+                           env=env, cert_type=cert_type)
     if not submit_result.get("ok"):
         return {
             "ok": False,

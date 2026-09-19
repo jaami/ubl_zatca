@@ -1,3 +1,4 @@
+from zatca_client import submit_invoice, summarize
 from flask import Flask, request, jsonify, Response
 import time
 import json
@@ -77,6 +78,37 @@ def get_db_connection():
         database='keytouse_zatca'
     )
 
+def log_submission(invoice_id, invoice_uuid, invoice_hash, env, endpoint,
+                   http_status, request_json, response_json, error_summary,
+                   zatca_status=None, clearance_status=None, reporting_status=None):
+    """Insert one row into SubmissionLog. Never raises — logs the error and returns."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO SubmissionLog
+              (InvoiceID, InvoiceUUID, InvoiceHash, Environment, Endpoint,
+               HTTPStatus, ZATCAStatus, ClearanceStatus, ReportingStatus,
+               RequestJSON, ResponseJSON, ErrorSummary)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (invoice_id, invoice_uuid, invoice_hash, env, endpoint,
+             http_status, zatca_status, clearance_status, reporting_status,
+             request_json, response_json, error_summary)
+        )
+        conn.commit()
+        logging.info(f"SubmissionLog: recorded entry for {invoice_id}")
+    except Exception as e:
+        logging.error(f"SubmissionLog: insert failed: {e}")
+    finally:
+        try:
+            if cursor: cursor.close()
+            if conn and conn.is_connected(): conn.close()
+        except Exception:
+            pass
 
 # Function to check if invoice_data.json exists and create it if necessary
 def init_invoice_data():
@@ -385,9 +417,110 @@ def upload_file():
 # [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
 # [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
 
+@app.route('/zatca/submit', methods=['POST'])
+def zatca_submit():
+    """Sign and submit the currently-staged invoice to ZATCA.
+
+    Body (optional JSON): {"invoiceid": "INV001"}
+    If omitted, invoiceid defaults to 'INV001'.
+
+    Reads /app/invoice.xml (produced by /upload), signs it, builds the
+    ZATCA request body, submits, logs to SubmissionLog, returns response.
+    """
+    try:
+        post_data = request.get_json(silent=True) or {}
+        invoice_id = post_data.get('invoiceid', 'INV001')
+
+        invoice_xml_path = '/app/invoice.xml'
+        if not os.path.exists(invoice_xml_path):
+            return jsonify({
+                "error": "No invoice XML staged. POST /upload first."
+            }), 400
+
+        # Fetch InvoiceTypeCode + UUID from local DB
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT InvoiceTypeCode, UUID FROM Invoice WHERE ID = %s",
+            (invoice_id,)
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not row:
+            return jsonify({"error": f"Invoice {invoice_id} not found in local DB"}), 404
+
+        invoice_type_code = row[0]
+        invoice_uuid = row[1]
+        logging.info(f"/zatca/submit: invoice={invoice_id} type={invoice_type_code} uuid={invoice_uuid}")
+
+        # Sign + build + submit in one call
+        signed_path = f'/app/invoice_{invoice_id}_signed.xml'
+        request_path = f'/app/invoice_{invoice_id}_request.json'
+
+        result = submit_invoice(
+            invoice_xml_path=invoice_xml_path,
+            invoice_type_code=invoice_type_code,
+            signed_path=signed_path,
+            request_path=request_path,
+            cert_type="compliance",
+        )
+
+        # Failure path — log what we know, return details
+        if not result.get('ok'):
+            log_submission(
+                invoice_id=invoice_id,
+                invoice_uuid=invoice_uuid,
+                invoice_hash=None,
+                env=result.get('env'),
+                endpoint=result.get('url'),
+                http_status=None,
+                request_json=None,
+                response_json=json.dumps(result, default=str),
+                error_summary=str(result.get('error', ''))[:1000],
+            )
+            return jsonify({
+                "error": "Submission failed",
+                "stage": result.get('stage'),
+                "details": result,
+            }), 400
+
+        # Success path — log the ZATCA response
+        body = result.get('body', {})
+        response = result.get('response', {})
+        summary = summarize(response)
+
+        log_submission(
+            invoice_id=invoice_id,
+            invoice_uuid=invoice_uuid,
+            invoice_hash=body.get('invoiceHash'),
+            env=result.get('env'),
+            endpoint=result.get('url'),
+            http_status=result.get('http_status'),
+            request_json=json.dumps(body, default=str),
+            response_json=json.dumps(response, default=str),
+            error_summary='; '.join(summary.get('errors') or [])[:1000],
+            zatca_status=summary.get('status'),
+            clearance_status=summary.get('clearance'),
+            reporting_status=summary.get('reporting'),
+        )
+
+        return jsonify({
+            "ok": True,
+            "invoiceid": invoice_id,
+            "environment": result.get('env'),
+            "http_status": result.get('http_status'),
+            "summary": summary,
+            "response": response,
+        }), 200
+
+    except Exception as e:
+        logging.exception(f"Exception in zatca_submit: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Initialize invoice data on startup
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
     init_config_info.load_config()
     init_invoice_data()
+    app.run(host='0.0.0.0', port=5000)
