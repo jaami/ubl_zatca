@@ -1,4 +1,9 @@
-from zatca_client import submit_invoice, summarize
+from zatca_client import (
+    submit_invoice, summarize, sign_invoice, build_request,
+    generate_csr, get_compliance_csid,
+    submit_compliance_check, get_production_csid,
+    extract_cert_pem, write_credentials_in_place,
+)
 from flask import Flask, request, jsonify, Response
 import time
 import json
@@ -517,6 +522,169 @@ def zatca_submit():
 
     except Exception as e:
         logging.exception(f"Exception in zatca_submit: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ----------------------------------------------------------------------
+# ZATCA onboarding routes
+# ----------------------------------------------------------------------
+
+@app.route('/zatca/onboard/csr', methods=['POST'])
+def zatca_onboard_csr():
+    """Generate a CSR + private key. Body: {"env": "sandbox", "config": "/path"}"""
+    try:
+        body = request.get_json(silent=True) or {}
+        env = body.get('env', os.environ.get('ZATCA_ENV', 'sandbox'))
+        config = body.get('config', '/app/ZatcaSDK/Data/Input/csr-config-example-EN.properties')
+        csr_out = body.get('csr_output', '/app/credentials/generated.csr')
+
+        result = generate_csr(config, csr_out, env=env)
+        if not result.get('ok'):
+            return jsonify({"error": "CSR generation failed", "details": result}), 400
+
+        return jsonify({
+            "ok": True,
+            "csr_path": result['csr_path'],
+            "key_path": result['key_path'],
+            "environment": env,
+            "next": "POST /zatca/onboard/compliance with {otp: '...'}"
+        }), 200
+    except Exception as e:
+        logging.exception(f"onboard/csr: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/zatca/onboard/compliance', methods=['POST'])
+def zatca_onboard_compliance():
+    """Exchange CSR + OTP for a Compliance CSID.
+    Body: {"otp": "123456", "env": "sandbox", "csr_path": "/app/credentials/generated.csr"}
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        otp = body.get('otp')
+        if not otp:
+            return jsonify({"error": "otp is required"}), 400
+
+        env = body.get('env', os.environ.get('ZATCA_ENV', 'sandbox'))
+        csr_path = body.get('csr_path', '/app/credentials/generated.csr')
+
+        result = get_compliance_csid(csr_path, otp, env=env)
+        if not result.get('ok'):
+            return jsonify({"error": "Compliance CSID failed", "details": result}), 400
+
+        # Persist the CSID JSON to credentials so we can reuse it
+        csid_path = '/app/credentials/compliance_csid.json'
+        with open(csid_path, 'w') as f:
+            json.dump(result['raw'], f, indent=2)
+
+        return jsonify({
+            "ok": True,
+            "requestID": result['requestID'],
+            "csid_saved_to": csid_path,
+            "environment": env,
+            "next": "POST /zatca/onboard/check for each compliance invoice, "
+                    "then /zatca/onboard/production"
+        }), 200
+    except Exception as e:
+        logging.exception(f"onboard/compliance: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/zatca/onboard/check', methods=['POST'])
+def zatca_onboard_check():
+    """Submit one compliance test invoice.
+    Body: {"invoiceid": "INV001", "env": "sandbox"}
+    Reads the staged /app/invoice.xml, signs + builds + submits using the CCSID.
+    """
+    try:
+        if not os.path.exists('/app/invoice.xml'):
+            return jsonify({"error": "No invoice staged. POST /upload first."}), 400
+
+        body = request.get_json(silent=True) or {}
+        env = body.get('env', os.environ.get('ZATCA_ENV', 'sandbox'))
+        invoice_id = body.get('invoiceid', 'INV001')
+
+        # Get the type code from the local DB
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT InvoiceTypeCode FROM Invoice WHERE ID = %s", (invoice_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not row:
+            return jsonify({"error": f"Invoice {invoice_id} not found"}), 404
+        invoice_type_code = row[0]
+
+        # Load the CCSID we saved in the previous step
+        csid = json.load(open('/app/credentials/compliance_csid.json'))
+        token = csid['binarySecurityToken']
+        secret = csid['secret']
+
+        # Sign + build using the existing zatca_client helpers
+        signed_path = f'/app/invoice_{invoice_id}_signed.xml'
+        request_path = f'/app/invoice_{invoice_id}_request.json'
+        sign_r = sign_invoice('/app/invoice.xml', signed_path)
+        if not sign_r.get('ok'):
+            return jsonify({"error": "sign failed", "details": sign_r}), 400
+        build_r = build_request(signed_path, request_path)
+        if not build_r.get('ok'):
+            return jsonify({"error": "build failed", "details": build_r}), 400
+
+        result = submit_compliance_check(
+            build_r['body'], token, secret,
+            invoice_type_code=invoice_type_code, env=env,
+        )
+        return jsonify(result), (200 if result.get('ok') else 400)
+    except Exception as e:
+        logging.exception(f"onboard/check: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/zatca/onboard/production', methods=['POST'])
+def zatca_onboard_production():
+    """Exchange Compliance CSID for Production CSID.
+    Body: {"env": "sandbox"}
+    Reads requestID + CCSID from /app/credentials/compliance_csid.json.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        env = body.get('env', os.environ.get('ZATCA_ENV', 'sandbox'))
+
+        csid = json.load(open('/app/credentials/compliance_csid.json'))
+        token = csid['binarySecurityToken']
+        secret = csid['secret']
+        request_id = csid.get('requestID')
+        if not request_id:
+            return jsonify({"error": "No requestID in compliance_csid.json"}), 400
+
+        result = get_production_csid(request_id, token, secret, env=env)
+        if not result.get('ok'):
+            return jsonify({"error": "Production CSID failed", "details": result}), 400
+
+        # Save the production CSID JSON separately
+        prod_path = '/app/credentials/production_csid.json'
+        with open(prod_path, 'w') as f:
+            json.dump(result['raw'], f, indent=2)
+
+        # Extract and write cert.pem + private-key.pem in place
+        cert_inner = extract_cert_pem(result['binarySecurityToken'])
+        # Use the same key that pairs with the CSR we generated
+        # (from the SDK's timestamped key file — find the newest)
+        import glob as _glob
+        keys = sorted(_glob.glob('/app/generated-private-key-*.key'), key=os.path.getmtime)
+        key_file = keys[-1] if keys else '/app/credentials/private-key.pem'
+
+        wrote = write_credentials_in_place(cert_inner, key_file, '/app/credentials')
+
+        return jsonify({
+            "ok": True,
+            "requestID": result['requestID'],
+            "production_csid_saved_to": prod_path,
+            "cert_written": wrote,
+            "environment": env,
+            "next": "POST /zatca/submit?cert=production for live submissions"
+        }), 200
+    except Exception as e:
+        logging.exception(f"onboard/production: {e}")
         return jsonify({"error": str(e)}), 500
 
 # Initialize invoice data on startup

@@ -275,3 +275,200 @@ def summarize(response):
         "errors": [e.get("message") for e in errs][:5],
         "warnings": [w.get("message") for w in warns][:5],
     }
+
+# ----------------------------------------------------------------------
+# Onboarding — CSR, Compliance CSID, Compliance checks, Production CSID
+# ----------------------------------------------------------------------
+
+import glob
+
+def generate_csr(csr_config_path, csr_output, env="sandbox"):
+    """
+    Generate a CSR + private key. The SDK writes the key with its own
+    timestamped name; we find it after the run.
+
+    Returns: {ok, csr_path, key_path, stdout}
+    """
+    args = [
+        "-csr",
+        "-csrConfig", csr_config_path,
+        "-generatedCsr", csr_output,
+    ]
+    if env == "sandbox":
+        args.append("-nonprod")
+    elif env == "simulation":
+        args.append("-sim")
+
+    stdout, stderr, rc = _run_fatoora(args, timeout=180)
+    if rc != 0:
+        return {"ok": False, "error": f"fatoora -csr failed (rc={rc})",
+                "stdout": stdout[-500:], "stderr": stderr[-500:]}
+
+    if not os.path.exists(csr_output):
+        return {"ok": False, "error": f"CSR not produced at {csr_output}"}
+
+    # Find the newest .key file in /app
+    candidates = sorted(glob.glob("/app/generated-private-key-*.key"), key=os.path.getmtime)
+    if not candidates:
+        return {"ok": False, "error": "No private key file found in /app"}
+
+    return {
+        "ok": True,
+        "csr_path": csr_output,
+        "key_path": candidates[-1],
+        "stdout": stdout[-300:],
+    }
+
+
+def _basic_auth(token, secret):
+    return base64.b64encode(f"{token}:{secret}".encode("utf-8")).decode("ascii")
+
+
+def get_compliance_csid(csr_b64_path, otp, env="sandbox"):
+    """
+    Exchange a base64-encoded CSR + OTP for a Compliance CSID.
+
+    Returns: {ok, requestID, binarySecurityToken, secret, raw}
+    """
+    if requests is None:
+        return {"ok": False, "error": "requests library not installed"}
+
+    with open(csr_b64_path, "r") as f:
+        csr_b64 = f.read().strip()
+
+    url = f"{ENDPOINTS[env]}/compliance"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept-Version": "V2",
+        "Accept-Language": "en",
+        "OTP": otp,
+    }
+    body = {"csr": csr_b64}
+
+    try:
+        resp = requests.post(url, headers=headers, json=body, timeout=get_timeout())
+    except Exception as e:
+        return {"ok": False, "error": f"HTTP POST failed: {e}", "url": url}
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = {"raw": resp.text}
+
+    if resp.status_code != 200:
+        return {"ok": False, "http_status": resp.status_code,
+                "url": url, "error": data.get("message", "unknown"),
+                "raw": data}
+
+    return {
+        "ok": True,
+        "http_status": resp.status_code,
+        "requestID": data.get("requestID"),
+        "binarySecurityToken": data.get("binarySecurityToken"),
+        "secret": data.get("secret"),
+        "raw": data,
+    }
+
+
+def submit_compliance_check(request_body, csid_token, csid_secret,
+                            invoice_type_code="388", env="sandbox"):
+    """
+    Submit one compliance test invoice.
+
+    request_body: the dict from build_request() — {"invoiceHash", "uuid", "invoice"}
+    """
+    if requests is None:
+        return {"ok": False, "error": "requests library not installed"}
+
+    url = f"{ENDPOINTS[env]}/compliance/invoices"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept-Version": "V2",
+        "Accept-Language": "en",
+        "Clearance-Status": "1" if str(invoice_type_code) == "388" else "0",
+        "Authorization": f"Basic {_basic_auth(csid_token, csid_secret)}",
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=request_body, timeout=get_timeout())
+    except Exception as e:
+        return {"ok": False, "error": f"HTTP POST failed: {e}"}
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = {"raw": resp.text}
+
+    return {
+        "ok": resp.status_code in (200, 202),
+        "http_status": resp.status_code,
+        "response": data,
+    }
+
+
+def get_production_csid(compliance_request_id, csid_token, csid_secret,
+                        env="sandbox"):
+    """
+    Exchange a Compliance CSID for a Production CSID.
+    """
+    if requests is None:
+        return {"ok": False, "error": "requests library not installed"}
+
+    url = f"{ENDPOINTS[env]}/production/csids"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept-Version": "V2",
+        "Accept-Language": "en",
+        "Authorization": f"Basic {_basic_auth(csid_token, csid_secret)}",
+    }
+    body = {"compliance_request_id": str(compliance_request_id)}
+
+    try:
+        resp = requests.post(url, headers=headers, json=body, timeout=get_timeout())
+    except Exception as e:
+        return {"ok": False, "error": f"HTTP POST failed: {e}"}
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = {"raw": resp.text}
+
+    if resp.status_code != 200:
+        return {"ok": False, "http_status": resp.status_code,
+                "error": data.get("message", "unknown"), "raw": data}
+
+    return {
+        "ok": True,
+        "http_status": resp.status_code,
+        "requestID": data.get("requestID"),
+        "binarySecurityToken": data.get("binarySecurityToken"),
+        "secret": data.get("secret"),
+        "raw": data,
+    }
+
+
+def extract_cert_pem(binary_security_token):
+    """Decode ZATCA's double-encoded binarySecurityToken to the inner base64 cert."""
+    outer = base64.b64decode(binary_security_token)
+    return outer.decode("utf-8")
+
+
+def write_credentials_in_place(cert_inner_b64, key_file_path, base_dir):
+    """
+    Write cert.pem and private-key.pem in place (truncate, never replace),
+    so the docker-compose bind mounts stay valid.
+    """
+    cert_path = os.path.join(base_dir, "cert.pem")
+    key_path = os.path.join(base_dir, "private-key.pem")
+
+    with open(cert_path, "w") as f:
+        f.write(cert_inner_b64)
+
+    with open(key_file_path) as f:
+        key_data = f.read().strip()
+
+    with open(key_path, "w") as f:
+        f.write(key_data)
+
+    return {"cert_path": cert_path, "key_path": key_path,
+            "cert_len": len(cert_inner_b64), "key_len": len(key_data)}
