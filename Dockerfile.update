@@ -1,0 +1,22 @@
+# Layer the current source files over the existing image.
+# Avoids rebuilding the 700MB SDK/JDK layer.
+
+FROM keytouse/ubl_zatca:ktuzatca-flask-app-beta-1.0
+
+# Overwrite the old app.py and add the new zatca_client module
+COPY app.py /app/app.py
+COPY zatca_client.py /app/zatca_client.py
+
+# Update schema.sql (adds SubmissionLog table)
+COPY schema.sql /app/schema.sql
+
+# Update sample payloads
+COPY invoice.json /app/invoice.json
+COPY sample_invoice.json /app/sample_invoice.json
+
+# Ensure the credentials mount point exists
+RUN mkdir -p /app/credentials
+
+# Default environment — override at runtime for simulation/production
+ENV ZATCA_ENV=sandbox
+ENV ZATCA_CSID_PATH=/app/credentials/compliance_csid.json
