@@ -262,6 +262,46 @@ def submit_invoice(invoice_xml_path, invoice_type_code,
 def summarize(response):
     """Extract status, clearance, and top errors from a ZATCA response."""
     if not isinstance(response, dict):
+        return {"status": None, "clearance": None, "reporting": None,
+                "errors": [], "warnings": []}
+
+    vr = response.get("validationResults") or {}
+    errs = vr.get("errorMessages") or []
+    warns = vr.get("warningMessages") or []
+
+    # Detect the duplicate-invoice response shape.
+    # ZATCA returns 409 with a Duplicate-Invoice errorMessage.
+    duplicate = False
+    for e in errs:
+        cat = (e.get("category") or "").lower()
+        code = (e.get("code") or "").lower()
+        if "duplicate" in cat or "duplicate" in code:
+            duplicate = True
+            break
+
+    status = vr.get("status")
+    clearance = response.get("clearanceStatus")
+    reporting = response.get("reportingStatus")
+
+    if duplicate:
+        # A 409 duplicate is not a failure — the invoice was already
+        # accepted earlier. Normalise the summary to reflect that.
+        status = "DUPLICATE"
+        if reporting == "NOT_REPORTED":
+            reporting = "REPORTED"
+        # Clearance duplicates arrive as 208, handled separately.
+
+    return {
+        "status": status,
+        "clearance": clearance,
+        "reporting": reporting,
+        "errors": [e.get("message") for e in errs][:5],
+        "warnings": [w.get("message") for w in warns][:5],
+        "duplicate": duplicate,
+    }
+
+    """Extract status, clearance, and top errors from a ZATCA response."""
+    if not isinstance(response, dict):
         return {"status": None, "clearance": None, "reporting": None, "errors": []}
 
     vr = response.get("validationResults") or {}
@@ -275,6 +315,27 @@ def summarize(response):
         "errors": [e.get("message") for e in errs][:5],
         "warnings": [w.get("message") for w in warns][:5],
     }
+
+def classify_response(http_status, response):
+    """
+    Normalize a ZATCA submission response into a clear outcome.
+
+    Returns one of:
+      SUBMITTED           - 200/202, normal acceptance
+      DUPLICATE_CLEARED   - 208, same hash already cleared within 24h (B2B)
+      DUPLICATE_REPORTED  - 409, same hash already reported within 24h (B2C)
+      REJECTED            - any other non-2xx
+      UNKNOWN             - could not classify
+    """
+    if http_status == 208:
+        return "DUPLICATE_CLEARED"
+    if http_status == 409:
+        return "DUPLICATE_REPORTED"
+    if http_status in (200, 202):
+        return "SUBMITTED"
+    if isinstance(http_status, int) and 400 <= http_status < 600:
+        return "REJECTED"
+    return "UNKNOWN"
 
 # ----------------------------------------------------------------------
 # Onboarding — CSR, Compliance CSID, Compliance checks, Production CSID

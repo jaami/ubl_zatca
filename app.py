@@ -1,5 +1,6 @@
 from zatca_client import (
     submit_invoice, summarize, sign_invoice, build_request,
+    classify_response,
     generate_csr, get_compliance_csid,
     submit_compliance_check, get_production_csid,
     extract_cert_pem, write_credentials_in_place,
@@ -491,18 +492,49 @@ def zatca_submit():
                 "details": result,
             }), 400
 
-        # Success path — log the ZATCA response
+        # Classify the response first — 208/409 are duplicates, not errors
         body = result.get('body', {})
         response = result.get('response', {})
+        http_status = result.get('http_status')
+        outcome = classify_response(http_status, response)
         summary = summarize(response)
 
+        # Duplicate cases: already submitted within 24h. Not a failure.
+        if outcome in ("DUPLICATE_CLEARED", "DUPLICATE_REPORTED"):
+            log_submission(
+                invoice_id=invoice_id,
+                invoice_uuid=invoice_uuid,
+                invoice_hash=body.get('invoiceHash'),
+                env=result.get('env'),
+                endpoint=result.get('url'),
+                http_status=http_status,
+                request_json=json.dumps(body, default=str),
+                response_json=json.dumps(response, default=str),
+                error_summary="",
+                zatca_status="DUPLICATE",
+                clearance_status="CLEARED" if outcome == "DUPLICATE_CLEARED" else None,
+                reporting_status="REPORTED" if outcome == "DUPLICATE_REPORTED" else None,
+            )
+            return jsonify({
+                "ok": True,
+                "invoiceid": invoice_id,
+                "environment": result.get('env'),
+                "http_status": http_status,
+                "outcome": outcome,
+                "message": "Invoice was already submitted within the last 24 hours. "
+                           "ZATCA returned the original result.",
+                "summary": summary,
+                "response": response,
+            }), 200
+
+        # Normal submission — log and return
         log_submission(
             invoice_id=invoice_id,
             invoice_uuid=invoice_uuid,
             invoice_hash=body.get('invoiceHash'),
             env=result.get('env'),
             endpoint=result.get('url'),
-            http_status=result.get('http_status'),
+            http_status=http_status,
             request_json=json.dumps(body, default=str),
             response_json=json.dumps(response, default=str),
             error_summary='; '.join(summary.get('errors') or [])[:1000],
@@ -515,7 +547,8 @@ def zatca_submit():
             "ok": True,
             "invoiceid": invoice_id,
             "environment": result.get('env'),
-            "http_status": result.get('http_status'),
+            "http_status": http_status,
+            "outcome": outcome,
             "summary": summary,
             "response": response,
         }), 200
