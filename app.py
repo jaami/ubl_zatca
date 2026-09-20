@@ -665,10 +665,23 @@ def zatca_onboard_production():
         with open(prod_path, 'w') as f:
             json.dump(result['raw'], f, indent=2)
 
-        # Extract and write cert.pem + private-key.pem in place
+        # Extract cert from the response
         cert_inner = extract_cert_pem(result['binarySecurityToken'])
-        # Use the same key that pairs with the CSR we generated
-        # (from the SDK's timestamped key file — find the newest)
+
+        # Guard: sandbox returns the SDK demo cert with this prefix.
+        # Refuse to overwrite a real cert with the demo.
+        DEMO_PREFIX = "MIID3jCCA4SgAwIBAgITEQAA"
+        if cert_inner.startswith(DEMO_PREFIX):
+            return jsonify({
+                "warning": "ZATCA returned the SDK demo certificate, not a real Production CSID.",
+                "explanation": "Sandbox does not issue real Production CSIDs. "
+                               "To obtain a real PCSID, onboard against simulation "
+                               "or production using a valid Taxpayer TIN and OTP.",
+                "cert_not_written": True,
+                "response": result['raw'],
+            }), 200
+
+        # Otherwise write the cert + key as before
         import glob as _glob
         keys = sorted(_glob.glob('/app/generated-private-key-*.key'), key=os.path.getmtime)
         key_file = keys[-1] if keys else '/app/credentials/private-key.pem'
@@ -681,7 +694,7 @@ def zatca_onboard_production():
             "production_csid_saved_to": prod_path,
             "cert_written": wrote,
             "environment": env,
-            "next": "POST /zatca/submit?cert=production for live submissions"
+            "next": "POST /zatca/submit for live submissions"
         }), 200
     except Exception as e:
         logging.exception(f"onboard/production: {e}")
