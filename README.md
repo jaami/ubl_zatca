@@ -396,6 +396,31 @@ Each environment exposes the same five endpoints:
 
 Set the target environment with the `ZATCA_ENV` environment variable. See [Configuration](#configuration) below.
 
+### Duplicate invoice responses (208 / 409)
+
+ZATCA added runtime duplicate validation in 2025. Submitting the same invoice hash within 24 hours returns:
+
+| HTTP | Environment | Meaning |
+|------|-------------|---------|
+| **208** | Clearance (B2B) | Invoice hash previously submitted. Response includes the original cleared invoice with ZATCA's signature and QR. |
+| **409** | Reporting (B2C) | Invoice was already reported successfully. |
+
+**Both are success indicators, not failures.** The `reportingStatus: NOT_REPORTED` field in a 409 body is a response artifact — the invoice *was* accepted on the first submission. ZATCA's official guidance:
+
+> "When taxpayers receive 409 response, it is implied that B2C invoice with same hash value was successfully reported in first instance and saved at ZATCA's end."
+
+**Do not resend.** Retrying the same payload triggers the duplicate check again and does not change the outcome. Internally, mark the invoice as `REPORTED` (for 409) or `CLEARED` (for 208).
+
+This implementation classifies these responses as `DUPLICATE_REPORTED` or `DUPLICATE_CLEARED` in `zatca_client.classify_response()`. In `SubmissionLog`:
+
+- 208 is recorded with `clearance_status: CLEARED`
+- 409 is recorded with `reporting_status: REPORTED`
+- Neither is recorded as an error
+
+The realistic scenario this protects against is a **dropped response**: the ERP submits, ZATCA processes, the response is lost (timeout or connection reset), and the ERP retries. Without this handling, the retry would look like a failure even though the invoice was already accepted.
+
+**Sandbox does not enforce this check.** It only applies to Simulation and Production. Testing against Sandbox will not reproduce these codes.
+
 ## Configuration
 
 Environment variables (all optional):
