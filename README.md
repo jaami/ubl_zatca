@@ -373,6 +373,27 @@ curl -X POST http://localhost:5000/upload \
 - **Not tied to Saudi Arabia only in design.** The UBL layer is generic; ZATCA-specific rules are what this repo implements.
 
 ---
+## Environments
+
+All endpoints use **`gw-fatoora.zatca.gov.sa`** — the current domain. The older `gw-apic-gov.gazt.gov.sa` was decommissioned on 14 Sep 2025 and no longer resolves.
+
+| Environment | Base URL | Purpose |
+|-------------|----------|---------|
+| Sandbox | `https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal` | Fixed OTP (`123456`), demo certs. Educational only — does not validate against real rules. |
+| Simulation | `https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation` | Real ZATCA-issued certs. Pre-production rehearsal. Requires a real Taxpayer TIN and portal OTP. |
+| Production | `https://gw-fatoora.zatca.gov.sa/e-invoicing/core` | Live invoicing. Requires a Production CSID. |
+
+Each environment exposes the same five endpoints:
+
+```
+{base}/compliance                 request a Compliance CSID
+{base}/compliance/invoices        run compliance checks
+{base}/production/csids           request or renew a Production CSID
+{base}/invoices/clearance/single  Clearance API (B2B standard invoices)
+{base}/invoices/reporting/single  Reporting API (B2C simplified invoices)
+```
+
+Set the target environment with the `ZATCA_ENV` environment variable. See [Configuration](#configuration) below.
 
 ## Configuration
 
