@@ -18,6 +18,7 @@ Written for Saudi Arabian e-invoicing (Fatoora). Built on the official ZATCA SDK
 - [API endpoints](#api-endpoints)
 - [What's tested, what isn't](#whats-tested-what-isnt)
 - [What this is not](#what-this-is-not)
+- [Environments](#environments)
 - [Configuration](#configuration)
 - [Roadmap](#roadmap)
 - [License](#license)
