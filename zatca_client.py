@@ -54,7 +54,7 @@ def get_timeout():
     return int(os.environ.get("ZATCA_TIMEOUT", DEFAULT_TIMEOUT))
 
 
-def endpoint_for(env, invoice_type_code, cert_type="compliance"):
+def endpoint_for(env, invoice_type_code, invoice_type_name="0100000", cert_type="compliance"):
     """
     Return the submission URL for the environment + invoice type + cert type.
 
@@ -62,18 +62,20 @@ def endpoint_for(env, invoice_type_code, cert_type="compliance"):
       "compliance" -> /compliance/invoices       (Compliance CSID)
       "production" -> /invoices/clearance/single (Standard, Production CSID)
                    -> /invoices/reporting/single (Simplified, Production CSID)
+
+    invoice_type_name:
+      "0100000"    -> Standard (B2B)
+      "0200000"    -> Simplified (B2C)
     """
     base = ENDPOINTS[env]
 
     if cert_type == "compliance":
         return f"{base}/compliance/invoices"
 
-    # Production endpoints
-    code = str(invoice_type_code).strip()
-    if code == "388":  # Standard -> clearance
-        return f"{base}/invoices/clearance/single"
-    if code == "389":  # Simplified -> reporting
+    # Simplified routes to reporting, Standard routes to clearance
+    if str(invoice_type_name).strip() == "0200000":
         return f"{base}/invoices/reporting/single"
+
     return f"{base}/invoices/clearance/single"
 
 
@@ -136,6 +138,31 @@ def sign_invoice(invoice_path, signed_path):
 
     return {"ok": True, "signed_path": signed_path}
 
+def validate_invoice(invoice_path):
+    """
+    Run fatoora -validate on an invoice XML.
+    Returns {ok, passed, details} — passed is True only if GLOBAL VALIDATION RESULT = PASSED.
+    """
+    if not os.path.exists(invoice_path):
+        return {"ok": False, "error": f"File not found: {invoice_path}"}
+
+    stdout, stderr, rc = _run_fatoora(["-validate", "-invoice", invoice_path])
+
+    output = (stdout or "") + (stderr or "")
+    passed = "GLOBAL VALIDATION RESULT = PASSED" in output
+
+    # Extract the individual result lines
+    details = []
+    for line in output.splitlines():
+        if "validation result" in line or "GLOBAL VALIDATION" in line:
+            details.append(line.strip())
+
+    return {
+        "ok": True,
+        "passed": passed,
+        "details": details,
+        "raw": output[-2000:] if not passed else "",
+    }
 
 def build_request(signed_path, request_path):
     """Build the ZATCA submission JSON from the signed invoice."""
@@ -168,7 +195,7 @@ def build_request(signed_path, request_path):
 # HTTP submission
 # ----------------------------------------------------------------------
 
-def submit(invoice_type_code, body, env=None, cert_type="compliance"):
+def submit(invoice_type_code, body, env=None, cert_type="compliance", invoice_type_name="0100000"):
     """POST the request body to the ZATCA gateway."""
     if requests is None:
         return {"ok": False, "error": "requests library not installed"}
@@ -181,7 +208,9 @@ def submit(invoice_type_code, body, env=None, cert_type="compliance"):
     except Exception as e:
         return {"ok": False, "error": f"CSID load failed: {e}"}
 
-    url = endpoint_for(env, invoice_type_code, cert_type=cert_type)
+    url = endpoint_for(env, invoice_type_code,
+                       invoice_type_name=invoice_type_name,
+                       cert_type=cert_type)
     auth = base64.b64encode(f"{token}:{secret}".encode("utf-8")).decode("ascii")
 
     headers = {
@@ -214,7 +243,7 @@ def submit(invoice_type_code, body, env=None, cert_type="compliance"):
 
 def submit_invoice(invoice_xml_path, invoice_type_code,
                    signed_path=None, request_path=None, env=None,
-                   cert_type="compliance"):
+                   cert_type="compliance", invoice_type_name="0100000"):
     """
     Sign, build request, submit. One call does it all.
     """
@@ -228,6 +257,20 @@ def submit_invoice(invoice_xml_path, invoice_type_code,
     if not sign_result.get("ok"):
         return {"ok": False, "stage": "sign", **sign_result}
 
+    # 1.5. Validate the signed XML
+    validate_result = validate_invoice(signed_path)
+    if not validate_result.get("ok"):
+        return {"ok": False, "stage": "validate", **validate_result}
+    if not validate_result.get("passed"):
+        return {
+            "ok": False,
+            "stage": "validate",
+            "error": "Local validation failed on the signed invoice",
+            "details": validate_result.get("details", []),
+            "raw": validate_result.get("raw", ""),
+        }
+
+
     # 2. Build request
     build_result = build_request(signed_path, request_path)
     if not build_result.get("ok"):
@@ -240,7 +283,8 @@ def submit_invoice(invoice_xml_path, invoice_type_code,
 
     # 3. Submit
     submit_result = submit(invoice_type_code, build_result["body"],
-                           env=env, cert_type=cert_type)
+                           env=env, cert_type=cert_type,
+                           invoice_type_name=invoice_type_name)
     if not submit_result.get("ok"):
         return {
             "ok": False,

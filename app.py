@@ -372,19 +372,19 @@ def upload_file():
 
                 xml_invoice = resp_data.get("message")
 
-                # Now response received, start Local validation
                 if xml_invoice:
                     logging.info("LOC#18: Response successfully received from remote server.")
 
-                    # Perform local checking of XML invoice before sending it to ZATCA
-                    local_check_result = XmlCheckWithoutX10(xml_invoice)
+                    # Save the XML to disk so /zatca/submit can sign + validate + submit it.
+                    # Validation now happens at submit time, on the signed XML.
+                    from xmlToSDK import save_b4_validation
+                    saved = save_b4_validation(xml_invoice, '/app/invoice.xml')
+                    if not saved:
+                        return jsonify({"error": "Failed to save XML to disk"}), 500
 
-                    if local_check_result[0]['status'] == 'error':
-                        return jsonify(local_check_result[0]), local_check_result[1]  # Return local check errors
-
-                    # If local check is successful, proceed with sending to ZATCA
-                    # (You may want to call another function here to handle that)
-                    return jsonify({"message": "XML invoice passed local checks and is ready for ZATCA."}), 200
+                    return jsonify({
+                        "message": "XML invoice staged. POST /zatca/submit to sign, validate, and submit."
+                    }), 200
 
                 else:
                     logging.error("LOC#19: No XML invoice found in response.")
@@ -447,7 +447,7 @@ def zatca_submit():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT InvoiceTypeCode, UUID FROM Invoice WHERE ID = %s",
+            "SELECT InvoiceTypeCode, InvoiceTypeName, UUID FROM Invoice WHERE ID = %s",
             (invoice_id,)
         )
         row = cursor.fetchone()
@@ -458,7 +458,8 @@ def zatca_submit():
             return jsonify({"error": f"Invoice {invoice_id} not found in local DB"}), 404
 
         invoice_type_code = row[0]
-        invoice_uuid = row[1]
+        invoice_type_name = row[1] or "0100000"
+        invoice_uuid = row[2]
         logging.info(f"/zatca/submit: invoice={invoice_id} type={invoice_type_code} uuid={invoice_uuid}")
 
         # Sign + build + submit in one call
@@ -468,6 +469,7 @@ def zatca_submit():
         result = submit_invoice(
             invoice_xml_path=invoice_xml_path,
             invoice_type_code=invoice_type_code,
+            invoice_type_name=invoice_type_name,
             signed_path=signed_path,
             request_path=request_path,
             cert_type="compliance",
