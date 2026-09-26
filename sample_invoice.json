@@ -16,6 +16,7 @@
       "IssueDate": "2025-09-15",
       "IssueTime": "14:30:00",
       "InvoiceTypeCode": "388",
+      "InvoiceTypeName": "0100000",
       "Note": "Sample invoice note",
       "DocumentCurrencyCode": "SAR",
       "TaxCurrencyCode": "SAR",

@@ -364,6 +364,7 @@ CREATE TABLE `Invoice` (
   `IssueDate` date DEFAULT NULL,
   `IssueTime` time DEFAULT NULL,
   `InvoiceTypeCode` varchar(50) DEFAULT NULL,
+  `InvoiceTypeName` varchar(10) DEFAULT '0100000',
   `Note` varchar(255) DEFAULT NULL,
   `DocumentCurrencyCode` varchar(10) DEFAULT NULL,
   `TaxCurrencyCode` varchar(10) DEFAULT NULL,

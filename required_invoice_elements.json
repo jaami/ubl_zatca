@@ -8,6 +8,7 @@
         "IssueDate",
         "IssueTime",
         "InvoiceTypeCode",
+        "InvoiceTypeName",
         "Note",
         "DocumentCurrencyCode",
         "TaxCurrencyCode",
