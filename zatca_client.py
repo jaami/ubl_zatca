@@ -387,13 +387,30 @@ def classify_response(http_status, response):
 
 import glob
 
-def generate_csr(csr_config_path, csr_output, env="sandbox"):
+def generate_csr(csr_config_path, csr_output, env="sandbox", force=False):
     """
     Generate a CSR + private key. The SDK writes the key with its own
     timestamped name; we find it after the run.
 
-    Returns: {ok, csr_path, key_path, stdout}
+    Refuses to run if a CCSID exists at /app/credentials/compliance_csid.json,
+    unless force=True. This prevents accidentally orphaning an active CSID.
+
+    Returns: {ok, csr_path, key_path, stable_key_path, stdout}
     """
+    # Safety: refuse to overwrite an active CCSID's key unless forced.
+    # Running -csr creates a new key and overwrites credentials/private-key.pem,
+    # which orphans any CCSID already issued. Subsequent signings fail with
+    # "invalid-digital-signature" because the cert no longer has a matching key.
+    csid_path = "/app/credentials/compliance_csid.json"
+    if os.path.exists(csid_path) and not force:
+        return {
+            "ok": False,
+            "error": "A CCSID already exists at " + csid_path + ". "
+                     "Generating a new CSR will overwrite the matching private key "
+                     "and orphan the current CSID. Delete the CSID file first, "
+                     "or pass force=True to override.",
+        }
+
     args = [
         "-csr",
         "-csrConfig", csr_config_path,
@@ -409,6 +426,13 @@ def generate_csr(csr_config_path, csr_output, env="sandbox"):
         return {"ok": False, "error": f"fatoora -csr failed (rc={rc})",
                 "stdout": stdout[-500:], "stderr": stderr[-500:]}
 
+    if os.path.exists("/app/credentials/compliance_csid.json"):
+        return {
+            "ok": False,
+            "error": "A CCSID already exists. Generating a new CSR will orphan it. "
+                     "Delete /app/credentials/compliance_csid.json first if you "
+                     "intend to replace the current CSID."
+        }
     if not os.path.exists(csr_output):
         return {"ok": False, "error": f"CSR not produced at {csr_output}"}
 
