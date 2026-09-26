@@ -79,9 +79,21 @@ def endpoint_for(env, invoice_type_code, invoice_type_name="0100000", cert_type=
     return f"{base}/invoices/clearance/single"
 
 
-def load_csid():
-    """Read the CSID JSON. Returns (token, secret, request_id)."""
-    path = get_csid_path()
+def load_csid(cert_type="compliance"):
+    """Read the CSID JSON. Returns (token, secret, request_id).
+
+    cert_type:
+      "compliance" -> /app/credentials/compliance_csid.json
+      "production" -> /app/credentials/production_csid.json (falls back to compliance if missing)
+    """
+    if cert_type == "production":
+        path = "/app/credentials/production_csid.json"
+        if not os.path.exists(path):
+            # Fall back to compliance if production file is missing
+            path = get_csid_path()
+    else:
+        path = get_csid_path()
+
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     token = data.get("binarySecurityToken")
@@ -204,7 +216,7 @@ def submit(invoice_type_code, body, env=None, cert_type="compliance", invoice_ty
         env = get_env()
 
     try:
-        token, secret, _ = load_csid()
+        token, secret, _ = load_csid(cert_type=cert_type)
     except Exception as e:
         return {"ok": False, "error": f"CSID load failed: {e}"}
 
