@@ -417,10 +417,26 @@ def generate_csr(csr_config_path, csr_output, env="sandbox"):
     if not candidates:
         return {"ok": False, "error": "No private key file found in /app"}
 
+    # Copy the key to a stable location so it survives container restarts.
+    # Without this, the key stays at /app/generated-private-key-<ts>.key which
+    # is only reachable inside the running container. If the container is
+    # recreated before we use the key, the CSID is orphaned.
+    stable_key_path = "/app/credentials/private-key.pem"
+    try:
+        with open(candidates[-1], "r") as src:
+            key_content = src.read()
+        with open(stable_key_path, "w") as dst:
+            dst.write(key_content)
+        logging.info(f"generate_csr: copied key to {stable_key_path}")
+    except Exception as e:
+        logging.warning(f"generate_csr: could not copy key to stable location: {e}")
+        # Not fatal — the timestamped key still works for this session.
+
     return {
         "ok": True,
         "csr_path": csr_output,
         "key_path": candidates[-1],
+        "stable_key_path": stable_key_path,
         "stdout": stdout[-300:],
     }
 
