@@ -127,10 +127,16 @@ def XmlGen(conn, cursor, InvoiceID):
         if current_time - CreatedAt > timedelta(hours=24):
             return "Invoice data is older than 24 hours. Please delete all data and re-fill.", False
 
-        if InvoiceTypeCode.strip() == "388": #standard
+        BillingReferenceElement = ""  # Only set for Credit / Debit Notes
+
+        if InvoiceTypeCode.strip() == "388":  # Standard Tax Invoice
             NoteElement = ""
-            DeliveryElements = """<cac:Delivery><cb<cac:AdditionalDocumentReference></cac:AdditionalDocumentReference>c:ActualDeliveryDate>{ActualDeliveryDate}</cbc:ActualDeliveryDate></cac:Delivery>"""
-        if InvoiceTypeCode.strip() == "389": #simple
+            DeliveryElements = """<cac:Delivery><cbc:ActualDeliveryDate>{ActualDeliveryDate}</cbc:ActualDeliveryDate></cac:Delivery>"""
+        elif InvoiceTypeCode.strip() in ("381", "383"):  # Credit Note or Debit Note
+            NoteElement = """<cbc:Note languageID="ar">{Note}</cbc:Note>"""
+            DeliveryElements = """<cac:Delivery><cbc:ActualDeliveryDate>{ActualDeliveryDate}</cbc:ActualDeliveryDate></cac:Delivery>"""
+            BillingReferenceElement = """<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>{InvoiceID}</cbc:ID></cac:InvoiceDocumentReference></cac:BillingReference>"""
+        elif InvoiceTypeCode.strip() == "389":  # Simplified Tax Invoice (legacy)
             NoteElement = """<cbc:Note languageID="ar">{Note}</cbc:Note>"""
             DeliveryElements = ""
 
@@ -153,6 +159,7 @@ def XmlGen(conn, cursor, InvoiceID):
                 <cbc:TaxCurrencyCode>{TaxCurrencyCode}</cbc:TaxCurrencyCode>"""
 
         NoteElement = NoteElement.format(Note=Note)
+        BillingReferenceElement = BillingReferenceElement.format(InvoiceID=InvoiceID)
         InvoiceElements = InvoiceElements.format(ProfileID=ProfileID, InvoiceID=InvoiceID, UUID=UUID, IssueDate=IssueDate, IssueTime=IssueTime, InvoiceTypeCode=InvoiceTypeCode, InvoiceTypeName=InvoiceTypeName, NoteElement=NoteElement, DocumentCurrencyCode=DocumentCurrencyCode, TaxCurrencyCode=TaxCurrencyCode)
 
         # ║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║
@@ -353,7 +360,7 @@ def XmlGen(conn, cursor, InvoiceID):
                 newXml = """<cbc:ActualDeliveryDate>{ActualDeliveryDate}</cbc:ActualDeliveryDate>"""
                 AllDatesXml += newXml.format(ActualDeliveryDate=ActualDeliveryDate)
 
-        if InvoiceTypeCode.strip() == "388":
+        if InvoiceTypeCode.strip() in ("388", "381", "383"):
             DeliveryElements = """<cac:Delivery>{ActualDeliveryDates}</cac:Delivery>"""
             DeliveryElements = DeliveryElements.format(ActualDeliveryDates=AllDatesXml)
         if InvoiceTypeCode.strip() == "389":
@@ -377,8 +384,15 @@ def XmlGen(conn, cursor, InvoiceID):
                 newXml = """<cbc:PaymentMeansCode>{PaymentMeansCode}</cbc:PaymentMeansCode>"""
                 PaymentMeansCodes += newXml.format(PaymentMeansCode=PaymentMeansCode)
 
-        PaymentMeansElements = """<cac:PaymentMeans>{PaymentMeansCodes}</cac:PaymentMeans>"""
-        PaymentMeansElements = PaymentMeansElements.format(PaymentMeansCodes=PaymentMeansCodes)
+        # For Credit (381) and Debit (383) notes, BR-KSA-17 requires a reason
+        # for issuing the note, expressed as cbc:InstructionNote inside cac:PaymentMeans.
+        if InvoiceTypeCode.strip() in ("381", "383"):
+            InstructionNote = f"""<cbc:InstructionNote>{Note}</cbc:InstructionNote>"""
+        else:
+            InstructionNote = ""
+
+        PaymentMeansElements = """<cac:PaymentMeans>{PaymentMeansCodes}{InstructionNote}</cac:PaymentMeans>"""
+        PaymentMeansElements = PaymentMeansElements.format(PaymentMeansCodes=PaymentMeansCodes, InstructionNote=InstructionNote)
 
         # ║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║
         # ║║║║║║║║║║║║║║║║║║ Allowance  Charge ║║║║║║║║║║║║║║║║║║║
@@ -853,8 +867,8 @@ def XmlGen(conn, cursor, InvoiceID):
         # print(f"║║║║║║║║║║║║║║║║║║║║║║ {InvoiceType} ║║║║║║║║║║║║║║║║║║║║║║║")
         # print("║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║║")
         print(f"[{Now}]:: ║║║║║║║║║║║║║║║ Complete Xml prepared. ║║║║║║║║║║║║║║║")
-        CompleteElements = """{NameSpaceElements}{InvoiceElements}{AdditionalDocumentReferenceElements}{SignatureElements}{AccountingSupplierPartyElements}{AccountingCustomerPartyElements}{DeliveryElements}{PaymentMeansElements}{AllowanceChargeElements}{TaxTotalElements}{LegalMonetaryTotalElements}{InvoiceLineElements}"""
-        CompleteElements = CompleteElements.format(NameSpaceElements=NameSpaceElements, InvoiceElements=InvoiceElements, AdditionalDocumentReferenceElements=AdditionalDocumentReferenceElements, SignatureElements=SignatureElements, AccountingSupplierPartyElements=AccountingSupplierPartyElements, AccountingCustomerPartyElements=AccountingCustomerPartyElements, DeliveryElements=DeliveryElements, PaymentMeansElements=PaymentMeansElements, AllowanceChargeElements=AllowanceChargeElements, TaxTotalElements=TaxTotalElements, LegalMonetaryTotalElements=LegalMonetaryTotalElements, InvoiceLineElements=InvoiceLineElements)
+        CompleteElements = """{NameSpaceElements}{InvoiceElements}{BillingReferenceElement}{AdditionalDocumentReferenceElements}{SignatureElements}{AccountingSupplierPartyElements}{AccountingCustomerPartyElements}{DeliveryElements}{PaymentMeansElements}{AllowanceChargeElements}{TaxTotalElements}{LegalMonetaryTotalElements}{InvoiceLineElements}"""
+        CompleteElements = CompleteElements.format(NameSpaceElements=NameSpaceElements, InvoiceElements=InvoiceElements, AdditionalDocumentReferenceElements=AdditionalDocumentReferenceElements, BillingReferenceElement=BillingReferenceElement, SignatureElements=SignatureElements, AccountingSupplierPartyElements=AccountingSupplierPartyElements, AccountingCustomerPartyElements=AccountingCustomerPartyElements, DeliveryElements=DeliveryElements, PaymentMeansElements=PaymentMeansElements, AllowanceChargeElements=AllowanceChargeElements, TaxTotalElements=TaxTotalElements, LegalMonetaryTotalElements=LegalMonetaryTotalElements, InvoiceLineElements=InvoiceLineElements)
         CompleteXml = CompleteXml.format(CompleteElements=CompleteElements)
         isError = False
         return CompleteXml, isError

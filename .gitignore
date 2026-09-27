@@ -17,3 +17,9 @@ stderr.log
 
 # Credentials — private keys, CSID secrets, certs
 credentials/
+
+# Credential backups and test artifacts
+credentials.before-pcsid/
+credentials.*/
+invoice_std_*.json
+invoice_credit_test.json

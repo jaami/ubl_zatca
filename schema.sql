@@ -568,6 +568,8 @@ CREATE TABLE `InvoiceType` (
 --
 
 INSERT INTO `InvoiceType` (`InvoiceTypeCode`, `IncoiceTypeName`) VALUES
+('381', 'Credit Note'),
+('383', 'Debit Note'),
 ('388', 'Standard Tax Invoice'),
 ('389', 'Simplified Tax Invoice'),
 ('390', 'Credit Note'),

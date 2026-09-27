@@ -472,7 +472,7 @@ def zatca_submit():
             invoice_type_name=invoice_type_name,
             signed_path=signed_path,
             request_path=request_path,
-            cert_type="compliance",
+            cert_type="production",
         )
 
         # Failure path — log what we know, return details
@@ -716,12 +716,19 @@ def zatca_onboard_production():
                 "response": result['raw'],
             }), 200
 
-        # Otherwise write the cert + key as before
-        import glob as _glob
-        keys = sorted(_glob.glob('/app/generated-private-key-*.key'), key=os.path.getmtime)
-        key_file = keys[-1] if keys else '/app/credentials/private-key.pem'
+        # Write ONLY the cert. Do NOT touch the private key.
+        # ZATCA issues the Production CSID for the SAME key pair as the CCSID.
+        # Overwriting the key would orphan the CSID.
+        cert_path = '/app/credentials/cert.pem'
+        with open(cert_path, 'w') as f:
+            f.write(cert_inner)
 
-        wrote = write_credentials_in_place(cert_inner, key_file, '/app/credentials')
+        wrote = {
+            "cert_path": cert_path,
+            "cert_len": len(cert_inner),
+            "key_path": "/app/credentials/private-key.pem (unchanged)",
+            "key_len": "unchanged",
+        }
 
         return jsonify({
             "ok": True,
