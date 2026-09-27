@@ -40,6 +40,28 @@ The whole thing runs in Docker. Two containers: a Flask app and a MySQL database
 
 ---
 
+## One URL, whole pipeline
+
+Every step of ZATCA onboarding and submission runs through a single base URL:
+
+```
+http://localhost:5000
+```
+
+| Step | Call |
+|------|------|
+| Generate CSR and private key | `POST /zatca/onboard/csr` |
+| Exchange OTP for Compliance CSID | `POST /zatca/onboard/compliance` |
+| Run one compliance check | `POST /zatca/onboard/check` |
+| Request Production CSID | `POST /zatca/onboard/production` |
+| Submit an invoice | `POST /zatca/submit` |
+
+No terminal. No SDK commands. No manual certificate handling. Any HTTP client can drive the entire flow — your ERP, a CI script, a Python notebook, a browser extension. If it can POST, it can onboard.
+
+The only human step is generating the OTP from the Fatoora portal. Everything else is code.
+
+---
+
 ## Architecture — local and remote
 
 The project is split into two halves that can run separately or together.
