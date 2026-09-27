@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZATCA E-Invoicing — Complete Pipeline</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { scroll-behavior: smooth; }
+        .hero {
+            background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+            color: #fff;
+            padding: 4.5rem 1rem 3.5rem;
+        }
+        .hero h1 { font-weight: 700; font-size: 2.75rem; }
+        .hero .lead { opacity: 0.95; font-size: 1.15rem; }
+        .trust-strip {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 0;
+        }
+        .trust-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        .nav-anchor { position: sticky; top: 0; z-index: 1000; }
+        pre { background: #f8f9fa; padding: 1rem; border-radius: .5rem; overflow-x: auto; }
+        code { color: #d63384; }
+        pre code { color: #212529; }
+        section { scroll-margin-top: 80px; }
+        .badge-method { font-size: .75rem; }
+        .arch-diagram {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: .5rem;
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.82rem;
+            overflow-x: auto;
+            line-height: 1.55;
+        }
+        .arch-diagram .label-local { color: #4ec9b0; }
+        .arch-diagram .label-remote { color: #569cd6; }
+        .arch-diagram .label-arrow { color: #ce9178; }
+        .json-scroll {
+            max-height: 500px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: .5rem;
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+        .json-scroll pre { margin: 0; background: transparent; padding: 0; }
+        .endpoint-method {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: ui-monospace, monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.4rem;
+        }
+        .method-post { background: #d1e7dd; color: #0f5132; }
+        .method-get  { background: #cfe2ff; color: #084298; }
+        .proof-box {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: .5rem;
+            padding: 1.25rem;
+        }
+        .proof-box pre {
+            background: #ffffff;
+            border: 1px solid #d1fae5;
+            margin: 0.75rem 0 0;
+            font-size: 0.85rem;
+        }
+        .feature-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: .5rem;
+            padding: 1.25rem;
+            height: 100%;
+        }
+        .feature-card h6 { margin-bottom: 0.5rem; font-weight: 600; }
+        .feature-card p { margin: 0; font-size: 0.9rem; color: #4b5563; }
+        .faq-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 0;
+        }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-item h6 { font-weight: 600; margin-bottom: 0.5rem; }
+        .faq-item p { margin: 0; color: #4b5563; font-size: 0.95rem; }
+        .use-case {
+            border-left: 3px solid #0d6efd;
+            padding-left: 1rem;
+            margin-bottom: 1rem;
+        }
+        .use-case h6 { font-weight: 600; margin-bottom: 0.25rem; }
+        .use-case p { margin: 0; color: #4b5563; font-size: 0.9rem; }
+        .link-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: .5rem;
+            padding: 1.25rem;
+            height: 100%;
+            transition: border-color 0.15s ease;
+        }
+        .link-card:hover { border-color: #0d6efd; }
+        .link-card h6 { font-weight: 600; margin-bottom: 0.5rem; }
+        .link-card p { font-size: 0.88rem; color: #6b7280; margin-bottom: 0.75rem; }
+        footer a { color: #9ca3af; text-decoration: none; }
+        footer a:hover { color: #fff; }
+        .env-badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .env-sandbox   { background: #fef3c7; color: #92400e; }
+        .env-simulation{ background: #dbeafe; color: #1e40af; }
+        .env-production{ background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+    <div class="container text-center">
+        <h1>ZATCA E-Invoicing,<br>end to end</h1>
+        <p class="lead mt-3 mb-0">
+            JSON invoices in. Signed, ZATCA-cleared UBL XML out.<br>
+            Free and open. Runs on your network.
+        </p>
+        <div class="mt-4">
+            <a href="#quickstart" class="btn btn-light btn-lg me-2 mb-2">Get Started</a>
+            <a href="#proof" class="btn btn-outline-light btn-lg me-2 mb-2">See It Working</a>
+            <a href="https://github.com/jaami/ubl_zatca" class="btn btn-outline-light btn-lg mb-2" target="_blank" rel="noopener">GitHub ↗</a>
+        </div>
+        <div class="mt-4">
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2 me-2 mb-1">Free</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2 me-2 mb-1">No signup</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2 me-2 mb-1">No fees</span>
+            <span class="badge rounded-pill bg-light text-dark px-3 py-2 mb-1">Open source · MIT</span>
+        </div>
+    </div>
+</header>
+
+<!-- ============ TRUST STRIP ============ -->
+<div class="trust-strip">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-center gap-4">
+            <span class="trust-item">✅ Verified against ZATCA Sandbox &amp; Simulation</span>
+            <span class="trust-item">🐳 Docker image on Docker Hub</span>
+            <span class="trust-item">🔒 Runs entirely on your infrastructure</span>
+            <span class="trust-item">⚖ MIT license — use it commercially</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============ NAV ============ -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark nav-anchor">
+    <div class="container">
+        <a class="navbar-brand" href="#">ZATCA Pipeline</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navmenu">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="#get-it">Get it</a></li>
+                <li class="nav-item"><a class="nav-link" href="#who-for">Who for</a></li>
+                <li class="nav-item"><a class="nav-link" href="#overview">Overview</a></li>
+                <li class="nav-item"><a class="nav-link" href="#architecture">Architecture</a></li>
+                <li class="nav-item"><a class="nav-link" href="#proof">Proof</a></li>
+                <li class="nav-item"><a class="nav-link" href="#pipeline">Pipeline</a></li>
+                <li class="nav-item"><a class="nav-link" href="#api">API</a></li>
+                <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://github.com/jaami/ubl_zatca" target="_blank" rel="noopener">GitHub ↗</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<main class="container my-5">
+
+    <!-- ============ GET IT ============ -->
+    <section id="get-it" class="mb-5">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <a href="https://hub.docker.com/r/keytouse/ubl_zatca" class="link-card d-block text-decoration-none text-dark" target="_blank" rel="noopener">
+                    <h6>🐳 Get the Docker image</h6>
+                    <p><code>keytouse/ubl_zatca:ktuzatca-flask-app-beta-1.1</code></p>
+                    <span class="text-primary small">hub.docker.com/r/keytouse/ubl_zatca →</span>
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="#quickstart" class="link-card d-block text-decoration-none text-dark">
+                    <h6>🌐 Use the hosted API</h6>
+                    <p>Free XML generation. No signup, no fees. Try it in one curl command.</p>
+                    <span class="text-primary small">Jump to Quick Start →</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ WHO THIS IS FOR ============ -->
+    <section id="who-for" class="mb-5">
+        <h2>Who this is for</h2>
+        <p class="lead text-muted">
+            If you can run Docker, you can deploy this yourself in 15 minutes.
+        </p>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="use-case">
+                    <h6>ERP integration teams</h6>
+                    <p>You have an ERP that produces invoices and need to add ZATCA compliance without licensing a third-party platform.</p>
+                </div>
+                <div class="use-case">
+                    <h6>SME developers</h6>
+                    <p>You're building an app for a Saudi business and don't want to spend weeks implementing ZATCA from scratch.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="use-case">
+                    <h6>Accounting firms</h6>
+                    <p>You handle e-invoicing for multiple clients and want a self-hostable solution that keeps each client's data separate.</p>
+                </div>
+                <div class="use-case">
+                    <h6>Self-hosters and tinkerers</h6>
+                    <p>You have basic computer knowledge — Docker, a terminal, a YAML file — and prefer to run things yourself rather than depend on a vendor.</p>
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-success mt-3 mb-0">
+            <strong>Do it yourself.</strong> No signup, no account, no sales call.
+            Pull the image, follow the README, and you'll be generating XML in minutes.
+        </div>
+    </section>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section id="overview" class="mb-5">
+        <h2>What you get</h2>
+        <p class="lead text-muted">
+            A complete ZATCA Phase 2 pipeline that you can run yourself in 15 minutes.
+        </p>
+
+        <div class="row g-3 mt-3">
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>JSON → UBL XML</h6>
+                    <p>Take a JSON invoice, get ZATCA-compliant UBL 2.1 XML back. Schema-driven, no hand-coding.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>Full Onboarding Over HTTP</h6>
+                    <p>CSR generation, Compliance CSID, all 6 compliance checks, Production CSID — as HTTP routes.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>XAdES-BES Signing</h6>
+                    <p>Sign with your ZATCA-issued CSID using the official SDK. Canonicalisation and hashing handled.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>Submission to Fatoora</h6>
+                    <p>Sandbox, Simulation, and Production endpoints. Clearance and Reporting APIs both supported.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>Credit &amp; Debit Notes</h6>
+                    <p>Types 381 and 383 handled with the required BillingReference and InstructionNote elements.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <h6>Local Audit Trail</h6>
+                    <p>Every submission logged with full request and response in a MySQL table. Query it any time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ THE PROBLEM ============ -->
+    <section id="problem" class="mb-5">
+        <h2>The problem this solves</h2>
+        <p>
+            ZATCA requires every B2B and B2C invoice in Saudi Arabia to be issued as signed
+            UBL XML, submitted through their gateway. Building this from scratch means weeks
+            of work: XAdES-BES signing, C14N canonicalisation, invoice hash chains, QR code
+            TLV encoding, and hundreds of validation rules most developers never see until
+            they fail.
+        </p>
+        <p>
+            Paid SaaS platforms charge per invoice or per month. Existing libraries cover
+            only parts of the problem. Most teams just need a working pipeline that handles
+            the whole flow and stays under their control.
+        </p>
+        <p class="mb-0">
+            This is that pipeline. Free, open source, and deployed on your own hardware.
+        </p>
+    </section>
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <section id="architecture" class="mb-5">
+        <h2>Architecture — two parts</h2>
+        <p>
+            The project is split into two halves. They can run separately or together.
+            Together they form the complete solution.
+        </p>
+
+        <div class="arch-diagram">
+<span class="label-local">LOCAL (Docker image — runs on your network)</span>
+  ┌────────────────────────────────────────────────┐
+  │  Flask server + MySQL                          │
+  │                                                │
+  │  • Receives invoice JSON (HTTP POST)           │
+  │  • Stores in local MySQL (permanent history)   │
+  │  • Calls remote for XML generation             │
+  │  • Validates XML with official ZATCA SDK       │
+  │  • Signs with your CSID (XAdES-BES)            │
+  │  • Submits to Fatoora gateway                  │
+  │  • Records every submission in SubmissionLog   │
+  └────────────────────────────────────────────────┘
+                        <span class="label-arrow">│</span>
+                        <span class="label-arrow">│ HTTPS: JSON out, UBL XML in</span>
+                        <span class="label-arrow">▼</span>
+<span class="label-remote">REMOTE (ubl.keytouse.com — free, public)</span>
+  ┌────────────────────────────────────────────────┐
+  │  Stateless XML generator                       │
+  │                                                │
+  │  • Takes JSON, returns UBL XML                 │
+  │  • Single-invoice design                       │
+  │  • No permanent storage                        │
+  │  • Free, no account, no signup                 │
+  └────────────────────────────────────────────────┘
+        </div>
+
+        <div class="alert alert-info mt-3 mb-0">
+            <strong>What runs where.</strong> The remote generates the XML. The local stack does
+            everything else — storage, validation, signing, submission, audit. Your invoices
+            never persist on the remote.
+        </div>
+    </section>
+
+    <!-- ============ PROOF ============ -->
+    <section id="proof" class="mb-5">
+        <h2>Proof it works</h2>
+        <p>
+            The pipeline has been run end-to-end against ZATCA's <strong>Sandbox</strong> and
+            <strong>Simulation</strong> gateways, using a real Saudi Taxpayer TIN. All six
+            compliance checks passed, a Production CSID was issued, and the production
+            clearance endpoint returned <code>CLEARED</code>.
+        </p>
+
+        <div class="proof-box">
+            <strong>POST /zatca/submit</strong> — response received from ZATCA Simulation:
+<pre><code>{
+  "ok": true,
+  "invoiceid": "INV001",
+  "environment": "simulation",
+  "http_status": 200,
+  "outcome": "SUBMITTED",
+  "summary": {
+    "status": "PASS",
+    "clearance": "CLEARED",
+    "reporting": null,
+    "errors": [],
+    "warnings": [],
+    "duplicate": false
+  },
+  "response": {
+    "validationResults": {
+      "infoMessages": [{
+        "category": "XSD validation",
+        "code": "XSD_ZATCA_VALID",
+        "message": "Complied with UBL 2.1 standards in line with ZATCA specifications",
+        "status": "PASS"
+      }],
+      "warningMessages": [],
+      "errorMessages": [],
+      "status": "PASS"
+    },
+    "clearanceStatus": "CLEARED"
+  }
+}</code></pre>
+            <p class="mb-0 mt-3 small">
+                <strong>Not yet tested:</strong> ZATCA Production. Same code paths as Simulation;
+                requires onboarding against <code>/e-invoicing/core</code> with a Production
+                Taxpayer TIN.
+            </p>
+        </div>
+
+        <div class="table-responsive mt-4">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr><th>Environment</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><span class="env-badge env-sandbox">Sandbox</span></td><td>✅ Full pipeline works. CLEARED.</td></tr>
+                    <tr><td><span class="env-badge env-simulation">Simulation</span></td><td>✅ Full onboarding verified. CCSID, all 6 checks, PCSID, production clearance endpoint CLEARED.</td></tr>
+                    <tr><td><span class="env-badge env-production">Production</span></td><td>⬜ Not yet tested — needs a real Taxpayer TIN.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============ QUICK START ============ -->
+    <section id="quickstart" class="mb-5">
+        <h2>Quick Start</h2>
+
+        <h4 class="mt-4">Option A — Hosted endpoint only</h4>
+        <p>If all you need is JSON → XML conversion, no setup is required:</p>
+        <pre><code>curl -X POST https://ubl.keytouse.com/zatca/xml \
+  -H "Content-Type: application/json" \
+  -d @your_invoice.json \
+  -o invoice.xml</code></pre>
+
+        <h4 class="mt-5">Option B — Full local stack</h4>
+        <p>For onboarding, signing, submission, and invoice history:</p>
+
+        <h6 class="mt-3">Prerequisites</h6>
+        <ul>
+            <li>Docker or Podman</li>
+            <li>~2 GB free disk space</li>
+            <li>Outbound HTTPS to <code>gw-fatoora.zatca.gov.sa</code> and <code>ubl.keytouse.com</code></li>
+        </ul>
+
+        <h6 class="mt-3">1. Extract the application files</h6>
+        <pre><code>mkdir zatca-local &amp;&amp; cd zatca-local
+
+docker run --rm --entrypoint tar \
+  keytouse/ubl_zatca:ktuzatca-flask-app-beta-1.1 \
+  -cf - -C /app \
+  --exclude=jdk11 --exclude=ZatcaSDK --exclude=__pycache__ \
+  . | tar -xf -</code></pre>
+
+        <h6 class="mt-3">2. Create <code>docker-compose.yml</code></h6>
+        <p>
+            The complete compose file is on the
+            <a href="https://github.com/jaami/ubl_zatca#quick-start" target="_blank" rel="noopener">GitHub repo</a>
+            and the
+            <a href="https://hub.docker.com/r/keytouse/ubl_zatca" target="_blank" rel="noopener">Docker Hub page</a>.
+            Change <code>MYSQL_ROOT_PASSWORD</code> before deploying.
+        </p>
+
+        <h6 class="mt-3">3. Start the stack</h6>
+        <pre><code>docker compose up -d</code></pre>
+
+        <h6 class="mt-3">4. Verify</h6>
+        <pre><code>curl http://localhost:5000/hi
+# -> Hello there!</code></pre>
+    </section>
+
+    <!-- ============ PIPELINE ============ -->
+    <section id="pipeline" class="mb-5">
+        <h2>The full pipeline, step by step</h2>
+        <p>
+            From "nothing" to "cleared invoice at ZATCA." The examples use <strong>Simulation</strong>.
+            Sandbox uses the same flow with the fixed OTP <code>123456</code>.
+        </p>
+
+        <h5 class="mt-4">Stage 1 — Generate a CSR and private key</h5>
+        <pre><code>curl -X POST http://localhost:5000/zatca/onboard/csr \
+  -H "Content-Type: application/json" \
+  -d '{"env": "simulation", "config": "/app/credentials/csr-config-simulation.properties"}'</code></pre>
+        <p>
+            Each environment uses a different certificate template:
+            Sandbox <code>TSTZATCA-Code-Signing</code>,
+            Simulation <code>PREZATCA-Code-Signing</code>,
+            Production <code>ZATCA-Code-Signing</code>.
+        </p>
+
+        <h5 class="mt-4">Stage 2 — Exchange CSR + OTP for a Compliance CSID</h5>
+        <p>
+            Requires an OTP from the Fatoora portal's Onboarding section.
+            Valid for 24 hours.
+        </p>
+        <pre><code>curl -X POST http://localhost:5000/zatca/onboard/compliance \
+  -H "Content-Type: application/json" \
+  -d '{"otp": "&lt;YOUR_OTP&gt;", "env": "simulation"}'</code></pre>
+
+        <h5 class="mt-4">Stage 3 — Extract the certificate</h5>
+        <p>
+            ZATCA returns the certificate double-encoded. Decode once and save to the mounted
+            <code>cert.pem</code>:
+        </p>
+        <pre><code>python3 &lt;&lt; 'EOF'
+import json, base64
+d = json.load(open('credentials/compliance_csid.json'))
+inner = base64.b64decode(d['binarySecurityToken']).decode('utf-8')
+with open('credentials/cert.pem', 'w') as f:
+    f.write(inner)
+print("cert.pem:", len(inner), "bytes")
+EOF</code></pre>
+
+        <h5 class="mt-4">Stage 4 — Run the six compliance checks</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr><th>#</th><th>Scenario</th><th>Code</th><th>Name</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>Standard Tax Invoice</td><td>388</td><td>0100000</td></tr>
+                    <tr><td>2</td><td>Standard Credit Note</td><td>381</td><td>0100000</td></tr>
+                    <tr><td>3</td><td>Standard Debit Note</td><td>383</td><td>0100000</td></tr>
+                    <tr><td>4</td><td>Simplified Tax Invoice</td><td>388</td><td>0200000</td></tr>
+                    <tr><td>5</td><td>Simplified Credit Note</td><td>381</td><td>0200000</td></tr>
+                    <tr><td>6</td><td>Simplified Debit Note</td><td>383</td><td>0200000</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <pre><code>curl -X POST -F "file=@invoice.json" http://localhost:5000/upload
+curl -X POST http://localhost:5000/zatca/submit \
+  -H "Content-Type: application/json" \
+  -d '{"invoiceid": "INV001"}'</code></pre>
+        <p>
+            Credit and Debit notes require <code>cac:BillingReference</code> and
+            <code>cac:PaymentMeans/cbc:InstructionNote</code>. The remote generator adds
+            these automatically based on <code>InvoiceTypeCode</code>.
+        </p>
+
+        <h5 class="mt-4">Stage 5 — Request the Production CSID</h5>
+        <pre><code>curl -X POST http://localhost:5000/zatca/onboard/production \
+  -H "Content-Type: application/json" \
+  -d '{"env": "simulation"}'</code></pre>
+        <p>
+            Returns a new <code>binarySecurityToken</code> and <code>secret</code>. The route
+            writes only the cert — the private key is not touched.
+        </p>
+
+        <h5 class="mt-4">Stage 6 — Submit with the Production CSID</h5>
+        <p>
+            <code>/zatca/submit</code> auto-detects cert type: uses
+            <code>production_csid.json</code> if present, otherwise <code>compliance_csid.json</code>.
+            No code change needed.
+        </p>
+
+        <div class="alert alert-info">
+            <strong>Every submission is logged.</strong> Query the audit trail with:
+<pre class="mt-2 mb-0"><code>podman exec -i ktuzatca-mysql-1 mysql -uroot -pTheRoot@Pass -t keytouse_zatca &lt;&lt; 'EOF'
+SELECT ID, InvoiceID, HTTPStatus, ZATCAStatus, ClearanceStatus, SubmittedAt
+FROM SubmissionLog ORDER BY ID DESC LIMIT 5;
+EOF</code></pre>
+        </div>
+
+        <div class="alert alert-warning">
+            <strong>Production onboarding is separate.</strong> Simulation runs without affecting
+            real tax records. Production onboarding requires explicit Taxpayer consent and
+            files real legal invoices.
+        </div>
+    </section>
+
+    <!-- ============ API ============ -->
+    <section id="api" class="mb-5">
+        <h2>API Reference</h2>
+
+        <h4 class="mt-4">Local stack</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>/hi</code></td><td>GET</td><td>Health check</td></tr>
+                    <tr><td><code>/upload</code></td><td>POST</td><td>Upload <code>invoice.json</code></td></tr>
+                    <tr><td><code>/zatca/submit</code></td><td>POST</td><td>Sign, validate, submit to ZATCA</td></tr>
+                    <tr><td><code>/zatca/onboard/csr</code></td><td>POST</td><td>Generate CSR + private key</td></tr>
+                    <tr><td><code>/zatca/onboard/compliance</code></td><td>POST</td><td>OTP → Compliance CSID</td></tr>
+                    <tr><td><code>/zatca/onboard/check</code></td><td>POST</td><td>Submit one compliance test invoice</td></tr>
+                    <tr><td><code>/zatca/onboard/production</code></td><td>POST</td><td>CCSID → Production CSID</td></tr>
+                    <tr><td><code>/invoiceid?id=INV001</code></td><td>GET/POST</td><td>Retrieve or store invoice by ID</td></tr>
+                    <tr><td><code>/deleteinvoice?id=INV001</code></td><td>DELETE</td><td>Remove a specific invoice</td></tr>
+                    <tr><td><code>/deleteall</code></td><td>GET</td><td>Remove all invoices</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 class="mt-5">Hosted endpoint (remote)</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr><th>Endpoint</th><th>Response</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>/zatca</code></td><td>JSON</td><td>Returns <code>{"status":"200","message":"&lt;xml&gt;"}</code></td></tr>
+                    <tr><td><code>/zatca/xml</code></td><td>Raw XML</td><td>Same input; returns XML directly</td></tr>
+                    <tr><td><code>/xmlgen?invoiceid=INV001</code></td><td>Raw XML (GET)</td><td>Quick browser view</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============ SAMPLE JSON ============ -->
+    <section id="sample" class="mb-5">
+        <h2>Sample JSON Payload</h2>
+        <p>
+            The <code>data</code> field must contain a <code>Config</code> array and all
+            invoice sections. Below is a complete example.
+        </p>
+        <div class="json-scroll">
+<pre><code>{{ sample_json }}</code></pre>
+        </div>
+    </section>
+
+    <!-- ============ RULES ============ -->
+    <section id="rules" class="mb-5">
+        <h2>Rules worth knowing</h2>
+
+        <h5 class="mt-3">1. <code>PaymentMeans.AccountingPartyID</code> references the customer</h5>
+        <p>Not the supplier. Otherwise:</p>
+        <pre><code>1EQ: Error: PaymentMeans should have at least one row.</code></pre>
+
+        <h5 class="mt-4">2. The server adds the second <code>TaxTotal</code> automatically</h5>
+        <p>
+            BR-KSA-EN16931-09 requires a second bare <code>TaxTotal</code> when
+            <code>TaxCurrencyCode</code> is present. Send just one — the server handles it.
+        </p>
+
+        <h5 class="mt-4">3. Supplier VAT must be 15 digits, starting and ending with <code>3</code></h5>
+        <p>Example: <code>311111111111113</code>. Otherwise:</p>
+        <pre><code>BR-KSA-40: seller VAT registration number must contain 15 digits.
+The first and the last digits are "3".</code></pre>
+
+        <h5 class="mt-4">4. Credit and Debit notes need a reason</h5>
+        <p>
+            BR-KSA-17 and BR-KSA-56 require <code>cac:BillingReference</code> and
+            <code>cac:PaymentMeans/cbc:InstructionNote</code>. Both are added by the
+            remote generator from the invoice's <code>Note</code> field.
+        </p>
+    </section>
+
+    <!-- ============ DUPLICATES ============ -->
+    <section id="duplicates" class="mb-5">
+        <h2>Duplicate invoice responses (208 / 409)</h2>
+        <p>
+            ZATCA added a runtime duplicate check in 2025. Submitting the same invoice hash
+            within 24 hours returns:
+        </p>
+        <ul>
+            <li><strong>208</strong> (Clearance) — hash previously submitted. Response includes the original cleared invoice.</li>
+            <li><strong>409</strong> (Reporting) — invoice was already reported successfully.</li>
+        </ul>
+        <p>
+            <strong>Both are success indicators, not failures.</strong> The
+            <code>reportingStatus: NOT_REPORTED</code> field in a 409 body is a response
+            artifact — the invoice <em>was</em> accepted on the first submission.
+        </p>
+        <p class="mb-0 small text-muted">
+            Sandbox does not enforce this check. It only applies to Simulation and Production.
+        </p>
+    </section>
+
+    <!-- ============ COMPARISON ============ -->
+    <section id="comparison" class="mb-5">
+        <h2>How this compares</h2>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th></th>
+                        <th>This solution</th>
+                        <th>Build from scratch</th>
+                        <th>Paid SaaS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Setup time</td><td>~15 minutes</td><td>Weeks</td><td>Hours</td></tr>
+                    <tr><td>Cost</td><td>Free</td><td>Developer time</td><td>Per-invoice or monthly fees</td></tr>
+                    <tr><td>Where invoice data lives</td><td>Your network</td><td>Your network</td><td>Their servers</td></tr>
+                    <tr><td>Customizable</td><td>Yes (MIT)</td><td>Yes</td><td>Limited</td></tr>
+                    <tr><td>Signing included</td><td>Built in</td><td>Build it yourself</td><td>Built in</td></tr>
+                    <tr><td>Support</td><td>Community</td><td>None</td><td>Vendor</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section id="faq" class="mb-5">
+        <h2>Frequently asked questions</h2>
+
+        <div class="faq-item">
+            <h6>Do I need a ZATCA account to use this?</h6>
+            <p>For the hosted JSON → XML endpoint, no. For the full pipeline (onboarding, signing, submission), yes — you need a Taxpayer TIN and access to the Fatoora portal.</p>
+        </div>
+
+        <div class="faq-item">
+            <h6>Is this production ready?</h6>
+            <p>The full pipeline is verified against Sandbox and Simulation, including the production clearance endpoint within Simulation. Production onboarding is a separate step requiring a real Taxpayer TIN and their explicit consent.</p>
+        </div>
+
+        <div class="faq-item">
+            <h6>Do you store my invoices?</h6>
+            <p>No. The remote is stateless — it holds only the in-flight invoice for up to 24 hours. Your invoice data stays on your own server in your own MySQL database.</p>
+        </div>
+
+        <div class="faq-item">
+            <h6>Can I run the whole thing myself, without calling the remote?</h6>
+            <p>Not yet. The remote XML generator isn't open source. The local stack depends on it for the XML-generation step.</p>
+        </div>
+
+        <div class="faq-item">
+            <h6>What if I find a bug?</h6>
+            <p>Open an issue on the <a href="https://github.com/jaami/ubl_zatca" target="_blank" rel="noopener">GitHub repo</a>. Best-effort maintenance by a solo developer.</p>
+        </div>
+
+        <div class="faq-item">
+            <h6>How is this free?</h6>
+            <p>Open source, MIT-licensed. The hosted endpoint runs at minimal cost. No accounts, no tracking, no paid tier.</p>
+        </div>
+    </section>
+
+    <!-- ============ LIMITATIONS ============ -->
+    <section id="limitations" class="mb-5">
+        <h2>What's tested, what isn't</h2>
+
+        <h5 class="mt-3">Working today</h5>
+        <ul>
+            <li>Full local stack: upload → DB insert → remote XML → local validation</li>
+            <li>CSR generation and Compliance CSID onboarding</li>
+            <li>XAdES-BES signing with a real ZATCA-issued certificate</li>
+            <li>Submission to <strong>Sandbox</strong> — <code>CLEARED</code></li>
+            <li>Submission to <strong>Simulation</strong> — full onboarding verified: CCSID, 6 checks, PCSID, production clearance endpoint returns <code>CLEARED</code></li>
+            <li>Credit Notes (381) and Debit Notes (383)</li>
+            <li>Duplicate invoice handling (208 / 409)</li>
+            <li>Audit log with full request and response</li>
+        </ul>
+
+        <h5 class="mt-4">Not yet tested</h5>
+        <ul>
+            <li>Submission to <strong>Production</strong> — requires a Production Taxpayer TIN</li>
+            <li>Real-world invoice variety beyond the sample</li>
+        </ul>
+
+        <h5 class="mt-4">What this is not</h5>
+        <ul>
+            <li><strong>Not a ZATCA SDK replacement.</strong> We use their SDK.</li>
+            <li><strong>Not a billing system.</strong> No invoicing history beyond the local database.</li>
+            <li><strong>Not multi-tenant.</strong> The remote is single-invoice.</li>
+            <li><strong>Not tied to Saudi Arabia only.</strong> The UBL layer is generic; ZATCA-specific rules are what this implements.</li>
+        </ul>
+    </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="bg-dark text-light py-5 mt-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <h6 class="fw-bold text-white mb-2">ZATCA E-Invoicing Pipeline</h6>
+                <p class="small mb-2 text-secondary">
+                    Free, open, and self-hostable. JSON invoices in, signed ZATCA-cleared
+                    UBL XML out.
+                </p>
+                <p class="small mb-0 text-secondary">
+                    Built on the official ZATCA E-Invoicing SDK (version 238-R3.3.8).
+                </p>
+            </div>
+            <div class="col-md-3 mb-4 mb-md-0">
+                <h6 class="fw-bold text-white mb-2 small text-uppercase">Links</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-1"><a href="https://github.com/jaami/ubl_zatca" target="_blank" rel="noopener">GitHub ↗</a></li>
+                    <li class="mb-1"><a href="https://hub.docker.com/r/keytouse/ubl_zatca" target="_blank" rel="noopener">Docker Hub ↗</a></li>
+                    <li class="mb-1"><a href="#quickstart">Quick Start</a></li>
+                    <li><a href="#api">API Reference</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3">
+                <h6 class="fw-bold text-white mb-2 small text-uppercase">Status</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-1">✅ Verified vs. Sandbox + Simulation</li>
+                    <li class="mb-1">⚖ MIT License</li>
+                    <li>📄 <a href="https://github.com/jaami/ubl_zatca/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE ↗</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
