@@ -472,7 +472,7 @@ def zatca_submit():
             invoice_type_name=invoice_type_name,
             signed_path=signed_path,
             request_path=request_path,
-            cert_type="production",
+            cert_type=("production" if os.path.exists('/app/credentials/production_csid.json') else "compliance"),
         )
 
         # Failure path — log what we know, return details

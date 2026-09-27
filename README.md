@@ -193,36 +193,45 @@ To actually submit to ZATCA, you need a CSID (certificate + secret). See [The pi
 
 ## The pipeline, step by step
 
-If you want to go from "nothing" to "cleared invoice at ZATCA," this is the full sequence.
+If you want to go from "nothing" to "cleared invoice at ZATCA," this is the full sequence. The examples use **Simulation** — ZATCA's pre-production environment. Sandbox uses the same flow with fixed credentials.
 
 ### Stage 1 — Generate a CSR and private key
 
 ```bash
 curl -X POST http://localhost:5000/zatca/onboard/csr \
   -H "Content-Type: application/json" \
-  -d '{"env": "sandbox"}'
+  -d '{"env": "simulation", "config": "/app/credentials/csr-config-simulation.properties"}'
 ```
 
-Returns the path to the generated CSR and the private key. The key is written to `/app/generated-private-key-<timestamp>.key` inside the container.
+Returns a `csr_path` and a `key_path`. The route also copies the private key to `/app/credentials/private-key.pem` (the mounted path), so it survives container restarts.
+
+Change `"env"` to `"sandbox"` or `"production"` for those environments. Each uses a different certificate template inside the CSR:
+
+| Environment | CSR template |
+|-------------|--------------|
+| Sandbox | `TSTZATCA-Code-Signing` |
+| Simulation | `PREZATCA-Code-Signing` |
+| Production | `ZATCA-Code-Signing` |
 
 ### Stage 2 — Exchange CSR + OTP for a Compliance CSID
 
-You need an OTP from the Fatoora portal. For sandbox, the fixed OTP is `123456`.
+You need an OTP from the Fatoora portal. Sandbox uses the fixed value `123456`. Simulation and Production require a real OTP from the portal's Onboarding section.
 
 ```bash
 curl -X POST http://localhost:5000/zatca/onboard/compliance \
   -H "Content-Type: application/json" \
-  -d '{"otp": "123456", "env": "sandbox"}'
+  -d '{"otp": "<YOUR_OTP>", "env": "simulation"}'
 ```
 
 Returns a `requestID`, a `binarySecurityToken`, and a `secret`. The route saves the whole response to `/app/credentials/compliance_csid.json`.
 
-### Stage 3 — Place the cert and key into the mount
+**The Compliance CSID is valid for 24 hours.** Complete the remaining stages within that window, or the CSID expires and you'll need to request a fresh OTP.
 
-The CSID response needs to be extracted into a cert file and paired with the private key from Stage 1:
+### Stage 3 — Extract the certificate onto the host
+
+ZATCA returns the certificate double-encoded (base64 of base64). Decode it once and save to the mounted `cert.pem`:
 
 ```bash
-# Decode the cert (ZATCA double-encodes it — this is normal)
 python3 << 'EOF'
 import json, base64
 d = json.load(open('credentials/compliance_csid.json'))
@@ -231,27 +240,74 @@ with open('credentials/cert.pem', 'w') as f:
     f.write(inner)
 print("cert.pem:", len(inner), "bytes")
 EOF
-
-# Pull the matching private key from the container
-KEY=$(podman exec ktuzatca-flask-app ls -t /app/generated-private-key-*.key | head -1)
-podman exec ktuzatca-flask-app cat "$KEY" > credentials/private-key.pem
 ```
 
-### Stage 4 — Submit an invoice
+The private key was already saved in Stage 1. No further action needed.
+
+> **Don't regenerate the CSR.** The key that pairs with the cert was created in Stage 1. Running Stage 1 again produces a new key and orphans the CSID. The `generate_csr()` function now refuses to run if a CCSID exists, to prevent this.
+
+### Stage 4 — Stage a sample invoice
 
 ```bash
-# Stage an invoice first
 curl -X POST -F "file=@invoice.json" http://localhost:5000/upload
+```
 
-# Sign + submit
+Expected: `{"message":"XML invoice staged..."}`. The XML is written to `/app/invoice.xml`.
+
+### Stage 5 — Run the six compliance checks
+
+For a new EGS (device) with `csr.invoice.type=1100`, ZATCA requires six compliance checks before issuing a Production CSID:
+
+| # | Scenario | `InvoiceTypeCode` | `InvoiceTypeName` |
+|---|----------|-------------------|-------------------|
+| 1 | Standard Tax Invoice | `388` | `0100000` |
+| 2 | Standard Credit Note | `381` | `0100000` |
+| 3 | Standard Debit Note | `383` | `0100000` |
+| 4 | Simplified Tax Invoice | `388` | `0200000` |
+| 5 | Simplified Credit Note | `381` | `0200000` |
+| 6 | Simplified Debit Note | `383` | `0200000` |
+
+For each scenario, edit `invoice.json` to set the two fields, then stage and submit:
+
+```bash
+curl -X POST -F "file=@invoice.json" http://localhost:5000/upload
 curl -X POST http://localhost:5000/zatca/submit \
   -H "Content-Type: application/json" \
   -d '{"invoiceid": "INV001"}'
 ```
 
-On success, the response contains `clearanceStatus: "CLEARED"` and an empty `errorMessages` array.
+Expected per submission: `status: "PASS"` with either `clearance: "CLEARED"` (Standard) or `reporting: "REPORTED"` (Simplified).
 
-Every submission is recorded in the `SubmissionLog` table:
+Credit and Debit notes require `cac:BillingReference` and `cac:PaymentMeans/cbc:InstructionNote` in the XML. The remote generator adds these automatically based on `InvoiceTypeCode`.
+
+`/zatca/submit` automatically uses the Compliance CSID until a Production CSID exists, then switches to the Production CSID. No code change is needed as you move between stages.
+
+### Stage 6 — Request the Production CSID
+
+After all six compliance checks pass:
+
+```bash
+curl -X POST http://localhost:5000/zatca/onboard/production \
+  -H "Content-Type: application/json" \
+  -d '{"env": "simulation"}'
+```
+
+Returns the new `binarySecurityToken`, `secret`, and a new `requestID`. Saved to `/app/credentials/production_csid.json`.
+
+The route writes the new cert to `/app/credentials/cert.pem`. The **private key is not touched** — ZATCA issues the Production CSID for the same key pair as the CCSID.
+
+### Stage 7 — Submit with the Production CSID
+
+Now `/zatca/submit` uses the production clearance/reporting endpoints instead of the compliance endpoint. No code change needed — the route detects the PCSID automatically.
+
+```bash
+curl -X POST -F "file=@invoice.json" http://localhost:5000/upload
+curl -X POST http://localhost:5000/zatca/submit \
+  -H "Content-Type: application/json" \
+  -d '{"invoiceid": "INV001"}'
+```
+
+Every submission is recorded in `SubmissionLog`:
 
 ```bash
 podman exec -i ktuzatca-mysql-1 mysql -uroot -pTheRoot@Pass -t keytouse_zatca << 'EOF'
@@ -261,17 +317,17 @@ ORDER BY ID DESC LIMIT 5;
 EOF
 ```
 
-### Optional — Production CSID
+### Onboarding against Production
 
-If you have a real Taxpayer TIN and access to the Fatoora portal, you can exchange the Compliance CSID for a Production CSID:
+Everything above can be run against Simulation without affecting any real tax filing. To onboard against the real Production environment:
 
-```bash
-curl -X POST http://localhost:5000/zatca/onboard/production \
-  -H "Content-Type: application/json" \
-  -d '{"env": "simulation"}'
-```
+1. Repeat Stage 1 with `"env": "production"` — requires a CSR config using the `ZATCA-Code-Signing` template
+2. Repeat Stage 2 with a Production OTP
+3. Run all six compliance checks — **these become real legal filings**
+4. Request the Production CSID — valid for real invoicing
+5. Submit real invoices to `/e-invoicing/core/...`
 
-**Note:** the sandbox environment returns a demo certificate for this call, not a real Production CSID. The route detects this and refuses to overwrite your working cert. Real Production CSIDs require simulation or production onboarding with a real TIN.
+Production onboarding affects the taxpayer's tax record and cannot be undone. It requires their explicit consent.
 
 ---
 
@@ -354,14 +410,23 @@ curl -X POST http://localhost:5000/upload \
 - Full local stack: upload → DB insert → remote XML → local validation
 - CSR generation and Compliance CSID onboarding
 - XAdES-BES signing with a real ZATCA-issued certificate
-- Submission to the **ZATCA Sandbox** gateway — `clearanceStatus: CLEARED`
+- Submission to **ZATCA Sandbox** — `clearanceStatus: CLEARED`
+- Submission to **ZATCA Simulation** — full onboarding verified end-to-end:
+  Compliance CSID obtained, all 6 compliance checks passed, Production CSID
+  issued, production clearance endpoint returns `CLEARED`
+- Credit Notes (381) and Debit Notes (383) — generated with the required
+  `BillingReference` and `PaymentMeans/InstructionNote` elements
+- Duplicate invoice response handling (208 / 409)
 - Audit log (`SubmissionLog`) with full request/response
 
 ### Not yet tested
 
-- Submission to **Simulation** or **Production** — the code paths are the same, but they require a real Taxpayer TIN, which we don't have for testing
-- The 6 mandatory compliance test invoices — the routes exist but currently submit one invoice at a time
-- The remote XML generator (not in this repo)
+- Submission to **ZATCA Production** — the real environment. Requires
+  onboarding against `/e-invoicing/core` with a fresh OTP and a separate
+  Production CSID. The code paths are identical to Simulation; only the
+  endpoint URL and certificate differ.
+- Real-world invoice variety beyond the sample
+
 
 ---
 
