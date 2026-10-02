@@ -1,4 +1,4 @@
-# ubl_zatca — ZATCA Phase 2 E-Invoicing Pipeline
+# ZATCA Phase 2 E-Invoicing Pipeline
 
 A free, self-hostable pipeline that turns JSON invoices into **ZATCA-compliant UBL XML**, signs them with XAdES-BES, submits them to the Fatoora gateway, and keeps a local audit trail.
 
